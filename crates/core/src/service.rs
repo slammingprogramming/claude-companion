@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! Running the sync in the background at login.
 //!
 //! * macOS: a LaunchAgent (`~/Library/LaunchAgents/<label>.plist`).
@@ -21,14 +25,14 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-pub const LABEL: &str = "io.github.songkeys.cc-same";
+pub const LABEL: &str = "io.github.slammingprogramming.claude-companion";
 /// Agents from before the rename (the Python prototype, then "Uni Claude"), replaced on install.
 pub const LEGACY_LABELS: &[&str] = &["local.uni-claude", "io.github.songkeys.uni-claude"];
-pub const DISPLAY_NAME: &str = "CC Same";
+pub const DISPLAY_NAME: &str = "Claude Companion";
 /// The app's bundle identifier. System Settings lists a background item under the app it names;
 /// without one, a standalone agent is listed under the name on its signing certificate.
 #[cfg(target_os = "macos")]
-const APP_BUNDLE_ID: &str = "io.github.songkeys.cc-same";
+const APP_BUNDLE_ID: &str = "io.github.slammingprogramming.claude-companion";
 /// The display name before the rename (the Windows `Run` value).
 #[cfg(windows)]
 const LEGACY_DISPLAY_NAME: &str = "Uni Claude";
@@ -467,7 +471,7 @@ mod platform {
     use super::*;
     use crate::paths::home;
 
-    const UNIT: &str = "cc-same.service";
+    const UNIT: &str = "claude-companion.service";
     /// Before the rename.
     const LEGACY_UNIT: &str = "uni-claude.service";
 
@@ -480,7 +484,7 @@ mod platform {
     }
 
     fn autostart_path() -> PathBuf {
-        config_home().join("autostart").join("cc-same.desktop")
+        config_home().join("autostart").join("claude-companion.desktop")
     }
 
     /// Take down the agent registered under the old name, if any.
@@ -509,7 +513,7 @@ mod platform {
             run_quiet(Command::new("systemctl").arg("--version")).map(|o| o.status.success()).unwrap_or(false);
         if has_systemd {
             let unit = format!(
-                "[Unit]\nDescription=CC Same: keep Claude Desktop sessions in sync across accounts\n\n\
+                "[Unit]\nDescription=Claude Companion: keep Claude Desktop sessions in sync across accounts\n\n\
                  [Service]\nExecStart={exec}\nRestart=on-failure\nRestartSec=30\nNice=10\n\n\
                  [Install]\nWantedBy=default.target\n"
             );
@@ -618,8 +622,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let paths = Paths::new(dir.path().join("claude"), dir.path().join("state"));
         let ctx = Ctx::new(paths.clone(), Config::default(), FakeDesktop::default(), LogSink::Silent);
-        let program = super::agent_program(&ctx, Path::new("/Applications/CC Same.app/Contents/MacOS/CC Same"));
-        assert_eq!(program.first().map(String::as_str), Some("/Applications/CC Same.app/Contents/MacOS/CC Same"));
+        let program =
+            super::agent_program(&ctx, Path::new("/Applications/Claude Companion.app/Contents/MacOS/Claude Companion"));
+        assert_eq!(
+            program.first().map(String::as_str),
+            Some("/Applications/Claude Companion.app/Contents/MacOS/Claude Companion")
+        );
         assert_eq!(program.last().map(String::as_str), Some("watch"));
         assert!(program.windows(2).any(|w| w[0] == "--state-dir" && Path::new(&w[1]) == paths.state_dir));
         assert!(program.windows(2).any(|w| w[0] == "--user-data" && Path::new(&w[1]) == paths.user_data));
@@ -629,10 +637,10 @@ mod tests {
     #[test]
     fn launch_agent_names_the_app_and_reads_back() {
         let program: Vec<String> =
-            ["/Users/a & b/cc-same-agent", "--state-dir", "/tmp/<state>", "watch"].map(String::from).to_vec();
+            ["/Users/a & b/claude-companion-agent", "--state-dir", "/tmp/<state>", "watch"].map(String::from).to_vec();
         let plist = super::platform::plist(&program, std::path::Path::new("/tmp/agent.log"));
         assert!(plist.contains("<key>AssociatedBundleIdentifiers</key>"));
-        assert!(plist.contains("<string>io.github.songkeys.cc-same</string>"));
+        assert!(plist.contains("<string>io.github.slammingprogramming.claude-companion</string>"));
         assert_eq!(super::platform::program_arguments(&plist), program);
     }
 }

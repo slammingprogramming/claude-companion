@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! What the window and the tray show, and what they can do. There is one per app, alive whether
 //! or not the window is open, so the tray stays current with the window closed.
 
@@ -5,14 +9,14 @@ use crate::i18n::{t, tf, tn};
 use crate::model::{self, Account, Busy, Mood};
 use crate::theme::ThemeChoice;
 use crate::update::{self, Failure, Problem, Release};
-use cc_same_core::accounts::{self, Refused as ListRefused};
-use cc_same_core::config::Config;
-use cc_same_core::desktop::{NotReady, Quitting, Watch};
-use cc_same_core::logins::{self, Refused};
-use cc_same_core::report::{self, Overview};
-use cc_same_core::retention::{self, Kept};
-use cc_same_core::snapshot::{self, Manifest};
-use cc_same_core::{ActionKind, Ctx, apply, desktop, fsx, service, watch};
+use claude_companion_core::accounts::{self, Refused as ListRefused};
+use claude_companion_core::config::Config;
+use claude_companion_core::desktop::{NotReady, Quitting, Watch};
+use claude_companion_core::logins::{self, Refused};
+use claude_companion_core::report::{self, Overview};
+use claude_companion_core::retention::{self, Kept};
+use claude_companion_core::snapshot::{self, Manifest};
+use claude_companion_core::{ActionKind, Ctx, apply, desktop, fsx, service, watch};
 use gpui_kit::{App, AppContext as _, Context, Entity, EventEmitter, Global};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -22,9 +26,9 @@ use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 #[cfg(windows)]
-const AGENT_NAME: &str = "cc-same-agent.exe";
+const AGENT_NAME: &str = "claude-companion-agent.exe";
 #[cfg(not(windows))]
-const AGENT_NAME: &str = "cc-same-agent";
+const AGENT_NAME: &str = "claude-companion-agent";
 
 /// How often the app looks for a new version, and how soon it looks again when it could not.
 const CHECK_EVERY: Duration = Duration::from_secs(24 * 60 * 60);
@@ -378,7 +382,7 @@ impl Store {
         });
     }
 
-    /// Put back what CC Same changed in Claude Code's settings.
+    /// Put back what Claude Companion changed in Claude Code's settings.
     pub fn undo_retention(&mut self, cx: &mut Context<Self>) {
         self.run_task(Busy::Saving, cx, |ctx| {
             retention::undo(&ctx.paths)?;
@@ -785,7 +789,7 @@ impl Store {
             return account.name;
         }
         let saved = self.overview.as_ref().and_then(|o| o.logins.saved(id).and_then(|s| s.email.clone()));
-        saved.unwrap_or_else(|| tf("account.unnamed", &[("id", &cc_same_core::short(id))]))
+        saved.unwrap_or_else(|| tf("account.unnamed", &[("id", &claude_companion_core::short(id))]))
     }
 
     /// Change a setting now and save it in the background.
@@ -889,13 +893,16 @@ mod tests {
         let program = |path: &Path| vec![path.to_string_lossy().into_owned(), "watch".to_string()];
         let expected = cfg!(target_os = "macos");
         assert_eq!(agent_outdated(&program(&bin.join(AGENT_NAME)), &bin), expected);
-        assert_eq!(agent_outdated(&program(&dir.path().join("Gone.app/Contents/MacOS/CC Same")), &bin), expected);
+        assert_eq!(
+            agent_outdated(&program(&dir.path().join("Gone.app/Contents/MacOS/Claude Companion")), &bin),
+            expected
+        );
         // The app it runs from is still there, or it is the command-line tool's own copy.
-        let app = dir.path().join("CC Same.app/Contents/MacOS/CC Same");
+        let app = dir.path().join("Claude Companion.app/Contents/MacOS/Claude Companion");
         std::fs::create_dir_all(app.parent().unwrap()).unwrap();
         std::fs::write(&app, "").unwrap();
         assert!(!agent_outdated(&program(&app), &bin));
-        assert!(!agent_outdated(&program(&bin.join("cc-same")), &bin));
+        assert!(!agent_outdated(&program(&bin.join("claude-companion")), &bin));
         assert!(!agent_outdated(&[], &bin));
     }
 }

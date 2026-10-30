@@ -871,47 +871,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc-same-app"
-version = "0.1.12"
-dependencies = [
- "anyhow",
- "auto-launch",
- "cc-same-core",
- "embed-resource",
- "gpui-kit",
- "image",
- "ksni",
- "libc",
- "objc2 0.6.4",
- "objc2-app-kit 0.3.2",
- "reqwest",
- "rust-i18n",
- "rustls",
- "semver",
- "serde_json",
- "sha2 0.10.9",
- "sys-locale",
- "tempfile",
- "tray-icon",
- "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "cc-same-core"
-version = "0.1.12"
-dependencies = [
- "anyhow",
- "chrono",
- "dirs 6.0.0",
- "libc",
- "reflink-copy",
- "serde",
- "serde_json",
- "tempfile",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "cexpr"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -986,6 +945,47 @@ dependencies = [
  "glob",
  "libc",
  "libloading",
+]
+
+[[package]]
+name = "claude-companion-app"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "auto-launch",
+ "claude-companion-core",
+ "embed-resource",
+ "gpui-kit",
+ "image",
+ "ksni",
+ "libc",
+ "objc2 0.6.4",
+ "objc2-app-kit 0.3.2",
+ "reqwest",
+ "rust-i18n",
+ "rustls",
+ "semver",
+ "serde_json",
+ "sha2 0.10.9",
+ "sys-locale",
+ "tempfile",
+ "tray-icon",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "claude-companion-core"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dirs 6.0.0",
+ "libc",
+ "reflink-copy",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

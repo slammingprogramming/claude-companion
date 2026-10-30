@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! The headline picture: one ring per account, drawn like the app icon.
 //!
 //! Rings that share every session overlap, and the translucent fills deepen where they do, so a

@@ -52,7 +52,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: msrv
-      - run: cargo +1.85 build -p cc-same
+      - run: cargo +1.85 build -p claude-companion
 
   app:
     name: App (${{ matrix.os }})

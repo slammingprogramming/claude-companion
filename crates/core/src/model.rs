@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! Plain data types shared by the scanner, the planner and the front-ends.
 
 use serde::{Deserialize, Serialize};

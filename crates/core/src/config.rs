@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! `config.json` (what the user chose) and `state.json` (what we remember between runs).
 //! Both keep the key names of the original Python prototype, so an existing install upgrades
 //! in place.

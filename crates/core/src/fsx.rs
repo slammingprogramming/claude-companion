@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! Careful file-system primitives: never follow symlinks, write atomically, keep mtimes,
 //! clone instead of copy where the file system allows it.
 
@@ -7,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Prefix of our temporary files. Desktop ignores anything not named `local_*`/`deleted_*`.
-pub const TMP_PREFIX: &str = ".cc-same-tmp-";
+pub const TMP_PREFIX: &str = ".claude-companion-tmp-";
 
 pub fn to_ns(t: SystemTime) -> i128 {
     match t.duration_since(UNIX_EPOCH) {

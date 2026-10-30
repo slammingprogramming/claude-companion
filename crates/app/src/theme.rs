@@ -1,4 +1,8 @@
-//! CC Same's look: a warm light and dark theme for GPUI Kit (`assets/theme.json`), and the
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
+//! Claude Companion's look: a warm light and dark theme for GPUI Kit (`assets/theme.json`), and the
 //! few product colors the rings in the headline need, derived from the theme's semantic tokens.
 
 use gpui_kit::component::{ActiveTheme as _, Theme, ThemeMode, ThemeSet};
@@ -52,7 +56,7 @@ impl ThemeChoice {
     }
 }
 
-/// Registers the CC Same themes as GPUI Kit's light and dark themes and loads the one that
+/// Registers the Claude Companion themes as GPUI Kit's light and dark themes and loads the one that
 /// matches the system.
 pub fn install(cx: &mut App) {
     let set: ThemeSet = serde_json::from_str(THEMES).expect("the bundled theme is valid");

@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! The settings sheet: look and language, what syncs, which accounts take part, how long
 //! transcripts last, snapshots to go back to, where the files are, and updates.
 
@@ -7,9 +11,9 @@ use crate::store::{Store, UpdatePhase};
 use crate::theme::ThemeChoice;
 use crate::update;
 use crate::view::{UniApp, open_notes};
-use cc_same_core::config::Config;
-use cc_same_core::report::Warning;
-use cc_same_core::retention::Limit;
+use claude_companion_core::config::Config;
+use claude_companion_core::report::Warning;
+use claude_companion_core::retention::Limit;
 use gpui_kit::component::avatar::Avatar;
 use gpui_kit::component::button::{Button, ButtonGroup};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
@@ -164,7 +168,7 @@ fn body(store: &Entity<Store>, cx: &mut App) -> impl IntoElement {
     };
 
     // How long the transcripts behind Desktop sessions stay, a way to keep them when they would
-    // go, and a way back from anything CC Same changed.
+    // go, and a way back from anything Claude Companion changed.
     let (title, mut detail) = match retention.desktop_days {
         None => (t("settings.kept_unlimited"), t("settings.kept.desktop")),
         Some(days) => (
@@ -341,7 +345,7 @@ fn body(store: &Entity<Store>, cx: &mut App) -> impl IntoElement {
                 .text_center()
                 .text_size(rems(0.846))
                 .text_color(muted)
-                .child(tf("settings.footer", &[("version", &cc_same_core::VERSION)])),
+                .child(tf("settings.footer", &[("version", &claude_companion_core::VERSION)])),
         )
 }
 

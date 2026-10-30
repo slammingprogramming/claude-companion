@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! How long Claude Code keeps the transcripts behind Claude Desktop's sessions, and changing it.
 //!
 //! Claude Code 2.1.248 and later keep the transcript of a session started or last continued in
@@ -45,7 +49,7 @@ pub struct Retention {
     pub cleanup_days: f64,
     /// The newest Claude Code that Claude Desktop has installed, if found.
     pub claude_code: Option<String>,
-    /// A change CC Same made that `undo` can put back.
+    /// A change Claude Companion made that `undo` can put back.
     pub undo: Option<Undo>,
 }
 
@@ -62,11 +66,11 @@ impl Retention {
     }
 }
 
-/// A change CC Same made to Claude Code's settings.
+/// A change Claude Companion made to Claude Code's settings.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Undo {
     pub key: String,
-    /// What CC Same wrote (`None`: it removed the key). Undo applies only while this is in place.
+    /// What Claude Companion wrote (`None`: it removed the key). Undo applies only while this is in place.
     pub set: Option<Value>,
     /// The value before (`None`: the key was not set).
     pub previous: Option<Value>,
@@ -127,7 +131,7 @@ pub fn keep(paths: &Paths) -> Result<Kept> {
     }
 }
 
-/// Put back what CC Same changed, if it is still in place. Returns whether anything changed.
+/// Put back what Claude Companion changed, if it is still in place. Returns whether anything changed.
 pub fn undo(paths: &Paths) -> Result<bool> {
     let user = settings(&paths.claude_settings).unwrap_or_default();
     let Some(u) = pending_undo(paths, &user) else { return Ok(false) };
@@ -152,7 +156,7 @@ fn change(paths: &Paths, key: &str, value: Option<Value>) -> Result<()> {
 }
 
 /// Write one key of Claude Code's user settings (`None` removes it), keeping every other key. The
-/// previous file is kept next to it as `settings.json.cc-same-backup-<time>`; returns its path.
+/// previous file is kept next to it as `settings.json.claude-companion-backup-<time>`; returns its path.
 fn write_key(paths: &Paths, key: &str, value: Option<Value>) -> Result<Option<PathBuf>> {
     let path = &paths.claude_settings;
     let mut map = Map::new();
@@ -163,7 +167,7 @@ fn write_key(paths: &Paths, key: &str, value: Option<Value>) -> Result<Option<Pa
             _ => bail!("{} is not a JSON object; left untouched", path.display()),
         };
         let mut name = path.file_name().context("settings path has no file name")?.to_os_string();
-        name.push(format!(".cc-same-backup-{}", crate::snapshot::stamp()));
+        name.push(format!(".claude-companion-backup-{}", crate::snapshot::stamp()));
         let b = fsx::unique_path(path.with_file_name(name));
         fs::copy(path, &b)?;
         backup = Some(b);
@@ -180,8 +184,8 @@ fn write_key(paths: &Paths, key: &str, value: Option<Value>) -> Result<Option<Pa
     Ok(backup)
 }
 
-/// The change CC Same can put back while it is still in place: its own record, or for the
-/// "Keep 10 years" of CC Same 0.1.0, which kept none, the value in its newest backup.
+/// The change Claude Companion can put back while it is still in place: its own record, or for the
+/// "Keep 10 years" of Claude Companion 0.1.0, which kept none, the value in its newest backup.
 fn pending_undo(paths: &Paths, user: &Map<String, Value>) -> Option<Undo> {
     let record = fsx::read_json(&paths.retention_undo_file(), 1024 * 1024).ok();
     if let Some(u) = record.and_then(|v| serde_json::from_value::<Undo>(v).ok()) {
@@ -206,7 +210,7 @@ fn same(a: Option<&Value>, b: Option<&Value>) -> bool {
 fn newest_backup(settings_file: &Path) -> Option<PathBuf> {
     let dir = settings_file.parent()?;
     let name = settings_file.file_name()?.to_string_lossy().into_owned();
-    let prefixes = [format!("{name}.cc-same-backup-"), format!("{name}.uni-claude-backup-")];
+    let prefixes = [format!("{name}.claude-companion-backup-"), format!("{name}.uni-claude-backup-")];
     fs::read_dir(dir)
         .ok()?
         .flatten()
@@ -372,11 +376,11 @@ mod tests {
     }
 
     #[test]
-    fn undoes_the_ten_years_that_cc_same_0_1_0_set() {
+    fn undoes_the_ten_years_that_claude_companion_0_1_0_set() {
         let h = Home::new(&["2.1.281"]);
         h.settings(json!({ "cleanupPeriodDays": 3650, "model": "opus" }));
         let dir = h.paths.claude_settings.parent().unwrap();
-        fs::write(dir.join("settings.json.cc-same-backup-20260929-120000"), r#"{"model": "opus"}"#).unwrap();
+        fs::write(dir.join("settings.json.claude-companion-backup-20260929-120000"), r#"{"model": "opus"}"#).unwrap();
         let r = read(&h.paths);
         assert_eq!(r.undo.as_ref().map(|u| u.key.as_str()), Some(CLEANUP));
         assert!(undo(&h.paths).unwrap());

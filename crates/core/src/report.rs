@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! A read-only picture of everything, shared by the CLI's `doctor` and the app.
 
 use crate::config::{LastSync, PendingRestart, State};
@@ -137,7 +141,7 @@ pub fn summarize(plan: &Plan) -> PlanView {
     }
 }
 
-/// Everything at once. Nothing of Claude's is changed; CC Same's list of accounts is brought up
+/// Everything at once. Nothing of Claude's is changed; Claude Companion's list of accounts is brought up
 /// to date ([`crate::accounts::observe`]).
 pub fn overview(ctx: &Ctx) -> Overview {
     let cfg = ctx.config();

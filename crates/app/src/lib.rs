@@ -1,4 +1,8 @@
-//! CC Same: keep Claude Desktop's local sessions identical across all your accounts.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
+//! Claude Companion: keep Claude Desktop's local sessions identical across all your accounts.
 //!
 //! One small window and a tray icon, built with Longbridge's GPUI Kit, over the same engine as
 //! the command line.
@@ -20,7 +24,7 @@ pub mod view;
 
 use crate::store::Store;
 use crate::tray::{Command, Tray};
-use cc_same_core::{Config, Ctx, FakeDesktop, LogSink, Paths};
+use claude_companion_core::{Config, Ctx, FakeDesktop, LogSink, Paths};
 use gpui_kit::component::TitleBar;
 use gpui_kit::{
     App, AppContext as _, Bounds, Context, Entity, Global, KeyBinding, Menu, MenuItem, QuitMode, Subscription,
@@ -29,12 +33,12 @@ use gpui_kit::{
 use std::rc::Rc;
 use std::sync::Arc;
 
-pub const APP_ID: &str = "io.github.songkeys.cc-same";
-pub const APP_NAME: &str = "CC Same";
+pub const APP_ID: &str = "io.github.slammingprogramming.claude-companion";
+pub const APP_NAME: &str = "Claude Companion";
 
-actions!(cc_same_app, [Quit, CloseWindow, CheckForUpdates]);
+actions!(claude_companion_app, [Quit, CloseWindow, CheckForUpdates]);
 
-/// The shared context for this process: default paths (or `CC_SAME_*` overrides).
+/// The shared context for this process: default paths (or `CLAUDE_COMPANION_*` overrides).
 pub fn context() -> Arc<Ctx> {
     let paths = Paths::detect();
     let config = Config::load(&paths).unwrap_or_default();

@@ -96,31 +96,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc-same"
-version = "0.1.12"
-dependencies = [
- "anyhow",
- "cc-same-core",
- "clap",
- "serde_json",
-]
-
-[[package]]
-name = "cc-same-core"
-version = "0.1.12"
-dependencies = [
- "anyhow",
- "chrono",
- "dirs",
- "libc",
- "reflink-copy",
- "serde",
- "serde_json",
- "tempfile",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "cfg-if"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -176,6 +151,31 @@ name = "clap_lex"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c133bc6a41be0d194c306b5506d15e6feeea7b1d6604bd3f8310dfb2ca96486"
+
+[[package]]
+name = "claude-companion"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "claude-companion-core",
+ "serde_json",
+]
+
+[[package]]
+name = "claude-companion-core"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dirs",
+ "libc",
+ "reflink-copy",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "windows-sys 0.59.0",
+]
 
 [[package]]
 name = "colorchoice"

@@ -4,21 +4,21 @@
 resolver = "2"
 
 [package]
-name = "cc-same-app"
+name = "claude-companion-app"
 description = "Keep Claude Desktop's local sessions identical across all your accounts (desktop app)"
 # Same as the version in the root Cargo.toml (CI checks).
-version = "0.1.12"
+version = "0.2.0"
 edition = "2024"
-license = "MIT"
-repository = "https://github.com/songkeys/cc-same"
-homepage = "https://github.com/songkeys/cc-same"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/slammingprogramming/claude-companion"
+homepage = "https://github.com/slammingprogramming/claude-companion"
 # GPUI needs a recent toolchain; the repository pins it in rust-toolchain.toml.
 rust-version = "1.96"
 build = "build.rs"
 publish = false
 
 [[bin]]
-name = "cc-same-app"
+name = "claude-companion-app"
 path = "src/main.rs"
 
 [dependencies]
@@ -31,7 +31,7 @@ rust-i18n = "4"
 serde_json = "1"
 auto-launch = "0.6"
 sys-locale = "0.3"
-cc-same-core = { path = "../core" }
+claude-companion-core = { path = "../core" }
 # Updates: the latest GitHub release, over HTTPS through the system's proxy settings.
 reqwest = { version = "0.13", default-features = false, features = ["blocking", "rustls-no-provider", "system-proxy"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }

@@ -1,16 +1,22 @@
-//! `cc-same`: keep Claude Desktop's local sessions identical across all your accounts.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
+//! `claude-companion`: keep Claude Desktop's local sessions identical across all your accounts.
 
 use anyhow::{bail, Result};
-use cc_same_core::accounts::{self, NotFound, Roster, Slot, Strategy};
-use cc_same_core::desktop::{self, Quitting};
-use cc_same_core::logins;
-use cc_same_core::report::{self, Overview, Warning};
-use cc_same_core::retention::{self, Kept, Limit};
-use cc_same_core::service::{self, Heartbeat};
-use cc_same_core::usage::Usage;
-use cc_same_core::watch::{self, WatchOptions};
-use cc_same_core::{apply, fsx, plan, scan, short, snapshot, Config, Ctx, FakeDesktop, LogSink, Paths, State, Surface};
 use clap::{Parser, Subcommand, ValueEnum};
+use claude_companion_core::accounts::{self, NotFound, Roster, Slot, Strategy};
+use claude_companion_core::desktop::{self, Quitting};
+use claude_companion_core::logins;
+use claude_companion_core::report::{self, Overview, Warning};
+use claude_companion_core::retention::{self, Kept, Limit};
+use claude_companion_core::service::{self, Heartbeat};
+use claude_companion_core::usage::Usage;
+use claude_companion_core::watch::{self, WatchOptions};
+use claude_companion_core::{
+    apply, fsx, plan, scan, short, snapshot, Config, Ctx, FakeDesktop, LogSink, Paths, State, Surface,
+};
 use std::collections::BTreeMap;
 use std::io::{IsTerminal, Write};
 use std::path::PathBuf;
@@ -19,16 +25,16 @@ use std::time::Duration;
 
 #[derive(Parser)]
 #[command(
-    name = "cc-same",
+    name = "claude-companion",
     version,
     about = "Keep Claude Desktop's local sessions identical across all your accounts."
 )]
 struct Cli {
     /// Claude Desktop's data folder (default: this platform's location)
-    #[arg(long, global = true, env = "CC_SAME_USER_DATA", value_name = "DIR")]
+    #[arg(long, global = true, env = "CLAUDE_COMPANION_USER_DATA", value_name = "DIR")]
     user_data: Option<PathBuf>,
-    /// Where cc-same keeps its config, snapshots and trash
-    #[arg(long, global = true, env = "CC_SAME_STATE_DIR", value_name = "DIR")]
+    /// Where claude-companion keeps its config, snapshots and trash
+    #[arg(long, global = true, env = "CLAUDE_COMPANION_STATE_DIR", value_name = "DIR")]
     state_dir: Option<PathBuf>,
     #[arg(short, long, global = true)]
     verbose: bool,
@@ -93,7 +99,7 @@ enum Cmd {
         /// Keep the transcripts of Desktop sessions (only needed when Claude Code would delete them)
         #[arg(long, conflicts_with_all = ["days", "undo"])]
         keep: bool,
-        /// Put back the setting CC Same changed
+        /// Put back the setting Claude Companion changed
         #[arg(long, conflicts_with = "days")]
         undo: bool,
     },
@@ -177,7 +183,7 @@ impl From<StrategyArg> for Strategy {
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
-        eprintln!("cc-same: {e:#}");
+        eprintln!("claude-companion: {e:#}");
         std::process::exit(2);
     }
 }
@@ -214,7 +220,7 @@ fn run(cli: Cli) -> Result<()> {
         Cmd::Snapshots => snapshots(&ctx),
         Cmd::Restore { snapshot, yes } => {
             let manifest = snapshot::list(&ctx).into_iter().find(|m| m.id == snapshot);
-            let Some(m) = manifest else { bail!("no such snapshot: {snapshot} (see `cc-same snapshots`)") };
+            let Some(m) = manifest else { bail!("no such snapshot: {snapshot} (see `claude-companion snapshots`)") };
             println!(
                 "Restore {} session folder(s) from {}. The current ones go to the trash first.",
                 m.partitions.len(),
@@ -242,7 +248,7 @@ fn run(cli: Cli) -> Result<()> {
                 return Ok(());
             }
             let fixed = snapshot::fix_symlinks(&ctx)?;
-            println!("Fixed {} folder(s). Run `cc-same sync` to merge them.", fixed.len());
+            println!("Fixed {} folder(s). Run `claude-companion sync` to merge them.", fixed.len());
             Ok(())
         }
         Cmd::Retention { days, keep, undo } => retention(&ctx, days, keep, undo),
@@ -319,7 +325,7 @@ fn describe_plan(ov_plan: &report::PlanView, labels: &std::collections::BTreeMap
 
 fn doctor(ctx: &Ctx) -> Result<()> {
     let ov = report::overview(ctx);
-    println!("cc-same {}", cc_same_core::VERSION);
+    println!("claude-companion {}", claude_companion_core::VERSION);
     let desktop = match (&ov.desktop_version, ov.app.running) {
         (Some(v), true) => format!("Claude {v}, running"),
         (Some(v), false) => format!("Claude {v}, not running"),
@@ -398,20 +404,20 @@ fn service_line(ov: &Overview) -> String {
         (true, Some(h)) => format!("on (agent v{}, last check {})", h.version, report::ago(h.heartbeat_at)),
         (true, None) => format!("on ({})", ov.service.detail),
         (false, _) if ov.service.legacy => {
-            "the original Python agent is still installed; `cc-same install` replaces it".into()
+            "the original Python agent is still installed; `claude-companion install` replaces it".into()
         }
-        (false, _) => "off (turn on with `cc-same install`)".into(),
+        (false, _) => "off (turn on with `claude-companion install`)".into(),
     }
 }
 
 fn warning_text(w: &Warning) -> String {
     match w {
         Warning::SymlinkedFolders { surface, count } => format!(
-            "{count} {surface} session folder(s) are symlinks. Claude silently stops saving sessions there. Quit Claude, then run: cc-same fix-symlinks"
+            "{count} {surface} session folder(s) are symlinks. Claude silently stops saving sessions there. Quit Claude, then run: claude-companion fix-symlinks"
         ),
         Warning::LeftoverFolders { dirs, .. } => format!("Leftover backup folders from other tools: {} (safe to archive by hand)", dirs.join(", ")),
         Warning::SpansOrgs { orgs, .. } => format!(
-            "Your accounts span {orgs} organizations, and synced sessions appear in all of them. To keep one separate: cc-same config --exclude <account-id>"
+            "Your accounts span {orgs} organizations, and synced sessions appear in all of them. To keep one separate: claude-companion config --exclude <account-id>"
         ),
         Warning::ShortRetention { days, limited_by, path } => {
             let why = match limited_by {
@@ -421,7 +427,7 @@ fn warning_text(w: &Warning) -> String {
             };
             let fix = match limited_by {
                 Limit::Organization => "",
-                _ => " Keep them: cc-same retention --keep",
+                _ => " Keep them: claude-companion retention --keep",
             };
             format!("Claude Code deletes the transcripts of Desktop sessions after {days} days ({why}), and a session opens empty without one.{fix}")
         }
@@ -437,7 +443,7 @@ fn show_plan(ctx: &Ctx, verbose: bool) -> Result<()> {
     if app.running {
         println!("Claude is running; changes to the account it has open wait until you switch accounts or quit.");
     }
-    let labels = cc_same_core::scan::account_labels(ctx);
+    let labels = claude_companion_core::scan::account_labels(ctx);
     for l in describe_plan(&report::summarize(&plan), &labels) {
         println!("{l}");
     }
@@ -452,7 +458,7 @@ fn show_plan(ctx: &Ctx, verbose: bool) -> Result<()> {
 
 fn sync(ctx: &Ctx, yes: bool) -> Result<()> {
     let (plan, _, _) = plan::build_plan(ctx, None, None);
-    let labels = cc_same_core::scan::account_labels(ctx);
+    let labels = claude_companion_core::scan::account_labels(ctx);
     for l in describe_plan(&report::summarize(&plan), &labels) {
         println!("{l}");
     }
@@ -480,7 +486,7 @@ fn sync(ctx: &Ctx, yes: bool) -> Result<()> {
 
 fn install(ctx: &Ctx, yes: bool) -> Result<()> {
     let (plan, _, _) = plan::build_plan(ctx, None, None);
-    let labels = cc_same_core::scan::account_labels(ctx);
+    let labels = claude_companion_core::scan::account_labels(ctx);
     println!("First sync:");
     for l in describe_plan(&report::summarize(&plan), &labels) {
         println!("{l}");
@@ -494,11 +500,11 @@ fn install(ctx: &Ctx, yes: bool) -> Result<()> {
     let (_, out) = apply::run_sync(ctx, "install")?;
     let exe = std::env::current_exe()?;
     // On Windows the windowless agent build runs in the background.
-    let agent = if cfg!(windows) { exe.with_file_name("cc-same-agent.exe") } else { exe.clone() };
+    let agent = if cfg!(windows) { exe.with_file_name("claude-companion-agent.exe") } else { exe.clone() };
     let (source, name) = if agent.exists() {
-        (agent, if cfg!(windows) { "cc-same-agent.exe" } else { "cc-same" })
+        (agent, if cfg!(windows) { "claude-companion-agent.exe" } else { "claude-companion" })
     } else {
-        (exe, if cfg!(windows) { "cc-same.exe" } else { "cc-same" })
+        (exe, if cfg!(windows) { "claude-companion.exe" } else { "claude-companion" })
     };
     let installed = service::install(ctx, &source, name)?;
     println!("Background sync is on ({}).", installed.display());
@@ -509,7 +515,7 @@ fn install(ctx: &Ctx, yes: bool) -> Result<()> {
     Ok(())
 }
 
-/// Every account CC Same knows of, by ID, with its name: the list, then the ones only seen in
+/// Every account Claude Companion knows of, by ID, with its name: the list, then the ones only seen in
 /// Claude's session folders.
 fn known_accounts(ctx: &Ctx, roster: &Roster) -> BTreeMap<String, String> {
     let labels = scan::account_labels(ctx);
@@ -534,8 +540,10 @@ fn named(ctx: &Ctx, roster: &Roster, query: &str) -> Result<(String, String)> {
                 .filter(|(id, name)| name.eq_ignore_ascii_case(query) || (query.len() >= 4 && id.starts_with(query)))
                 .collect();
             match others.as_slice() {
-                [(_, name)] => bail!("{name} is not in the list yet: sign in to it once in Claude (`cc-same add`)"),
-                [] => bail!("no account called {query} (see `cc-same accounts`)"),
+                [(_, name)] => {
+                    bail!("{name} is not in the list yet: sign in to it once in Claude (`claude-companion add`)")
+                }
+                [] => bail!("no account called {query} (see `claude-companion accounts`)"),
                 _ => bail!(
                     "{query} could be {}",
                     others.iter().map(|(_, n)| n.as_str()).collect::<Vec<_>>().join(" or ")
@@ -617,7 +625,7 @@ fn accounts(ctx: &Ctx, json: bool) -> Result<()> {
             let stale = if kept.stale() { " (may ask to sign in again)" } else { "" };
             format!("kept, used {}{stale}", report::ago(kept.set_aside_at))
         } else {
-            "sign in once to switch here (`cc-same add`)".to_string()
+            "sign in once to switch here (`claude-companion add`)".to_string()
         };
         let state = if s.disabled { format!("{state}, sits out") } else { state };
         let used = usage_text(usage.get(&s.account), now);
@@ -684,7 +692,7 @@ fn quit_watch() -> desktop::Watch<'static> {
                 "Claude is asking whether to stop its work in progress: answer it in Claude. (Ctrl-C stops waiting; nothing changes.)"
             ),
             Quitting::AfterWork => eprintln!(
-                "Claude quits once its work in progress is done, and CC Same carries on then. (Ctrl-C stops waiting; Claude still quits then.)"
+                "Claude quits once its work in progress is done, and Claude Companion carries on then. (Ctrl-C stops waiting; Claude still quits then.)"
             ),
         }
     }
@@ -697,10 +705,10 @@ fn add(ctx: &Ctx) -> Result<()> {
     if let Some(from) = &switched.from {
         let name = name_in(&roster, from);
         let number = roster.slot(from).map(|s| s.number.to_string()).unwrap_or_else(|| name.clone());
-        println!("Kept {name}: `cc-same switch {number}` brings it back.");
+        println!("Kept {name}: `claude-companion switch {number}` brings it back.");
     }
     println!("Claude is open on its sign-in page: sign in to the other account there.");
-    println!("To switch later, use `cc-same switch`: Log out in Claude ends a sign-in for good.");
+    println!("To switch later, use `claude-companion switch`: Log out in Claude ends a sign-in for good.");
     Ok(())
 }
 
@@ -721,7 +729,7 @@ fn alias(ctx: &Ctx, account: Option<&str>, name: Option<&str>, unset: bool) -> R
     let Some(query) = account else {
         let aliased: Vec<&Slot> = roster.slots.iter().filter(|s| s.alias.is_some()).collect();
         if aliased.is_empty() {
-            println!("No aliases yet: `cc-same alias <account> <name>`.");
+            println!("No aliases yet: `claude-companion alias <account> <name>`.");
         }
         for s in aliased {
             println!("  {:<12}  {}  {}", s.alias.as_deref().unwrap_or_default(), s.number, s.label());
@@ -735,7 +743,7 @@ fn alias(ctx: &Ctx, account: Option<&str>, name: Option<&str>, unset: bool) -> R
     } else if let Some(name) = name {
         let roster = accounts::set_alias(ctx, &id, Some(name))?;
         let alias = roster.slot(&id).and_then(|s| s.alias.clone()).unwrap_or_default();
-        println!("{label} is also {alias}: `cc-same switch {alias}`.");
+        println!("{label} is also {alias}: `claude-companion switch {alias}`.");
     } else {
         match roster.slot(&id).and_then(|s| s.alias.as_deref()) {
             Some(alias) => println!("{alias}"),
@@ -750,7 +758,7 @@ fn sit_out(ctx: &Ctx, query: &str, disabled: bool) -> Result<()> {
     let (id, name) = named(ctx, &roster, query)?;
     accounts::set_disabled(ctx, &id, disabled)?;
     if disabled {
-        println!("{name} sits out of the rotation; `cc-same switch {query}` still switches to it.");
+        println!("{name} sits out of the rotation; `claude-companion switch {query}` still switches to it.");
     } else {
         println!("{name} is back in the rotation.");
     }
@@ -829,12 +837,14 @@ fn retention(ctx: &Ctx, days: Option<u32>, keep: bool, undo: bool) -> Result<()>
                 println!("cleanupPeriodDays = 3650. Updating Claude keeps Desktop transcripts at any age.")
             }
         }
-        println!("Undo with: cc-same retention --undo");
+        println!("Undo with: claude-companion retention --undo");
         return Ok(());
     }
     if undo {
         match retention::undo(&ctx.paths)? {
-            true => println!("Put back the setting CC Same changed in {}.", ctx.paths.claude_settings.display()),
+            true => {
+                println!("Put back the setting Claude Companion changed in {}.", ctx.paths.claude_settings.display())
+            }
             false => println!("Nothing to undo."),
         }
         return Ok(());
@@ -853,10 +863,10 @@ fn retention(ctx: &Ctx, days: Option<u32>, keep: bool, undo: bool) -> Result<()>
     }
     println!("Terminal sessions and other data: deleted after {} days (cleanupPeriodDays).", r.cleanup_days);
     if r.is_short() && r.limited_by != Some(Limit::Organization) {
-        println!("Keep them: cc-same retention --keep");
+        println!("Keep them: claude-companion retention --keep");
     }
     if r.undo.is_some() {
-        println!("Put back what CC Same changed: cc-same retention --undo");
+        println!("Put back what Claude Companion changed: claude-companion retention --undo");
     }
     Ok(())
 }

@@ -1,9 +1,13 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! What the window says, worked out from the engine's [`Overview`]: the headline, the accounts,
 //! and how each ring in the headline sits. No drawing here; the words come from `locales/`.
 
 use crate::i18n::{t, tf, tn};
-use cc_same_core::report::{Overview, PartitionView, Warning};
-use cc_same_core::{Surface, short};
+use claude_companion_core::report::{Overview, PartitionView, Warning};
+use claude_companion_core::{Surface, short};
 use std::cmp::Reverse;
 use std::time::Duration;
 
@@ -92,14 +96,14 @@ pub enum Busy {
 
 /// An account, the way people know it. Claude keeps a session list for every organization an
 /// account has been used in (signing in to another account can even leave an empty one in the
-/// previous account's organization), and CC Same keeps them all the same, so an account is one
+/// previous account's organization), and Claude Companion keeps them all the same, so an account is one
 /// row that reports the list Claude shows for it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Account {
     pub id: String,
     /// What the window calls it: the name it was given, else its email, else `Account 1a2b3c4d`.
     pub name: String,
-    /// Its email, when CC Same could find one: what to type on Claude's sign-in page.
+    /// Its email, when Claude Companion could find one: what to type on Claude's sign-in page.
     pub email: Option<String>,
     pub sessions: usize,
     /// Sessions the others have and this one does not, yet.
@@ -114,7 +118,7 @@ pub struct Account {
     /// Its number in the list of accounts to switch between; none until Claude has been seen
     /// signed in to it.
     pub number: Option<u32>,
-    /// The name it was given in the list (`cc-same alias`, or the pencil beside its name).
+    /// The name it was given in the list (`claude-companion alias`, or the pencil beside its name).
     pub alias: Option<String>,
     /// Left out of "Next Account".
     pub sits_out: bool,
@@ -151,8 +155,8 @@ pub enum Fullness {
 }
 
 impl PlanUse {
-    pub fn of(usage: &cc_same_core::usage::Usage, now: f64, in_use: bool) -> Option<PlanUse> {
-        use cc_same_core::usage::{FIVE_HOURS, FRESH};
+    pub fn of(usage: &claude_companion_core::usage::Usage, now: f64, in_use: bool) -> Option<PlanUse> {
+        use claude_companion_core::usage::{FIVE_HOURS, FRESH};
         let percent = |p: f64| p.clamp(0., 999.).round() as u32;
         let age = now - usage.at;
         let five_hour = if in_use && age > FIVE_HOURS { None } else { usage.five_hour_at(now).map(percent) };
@@ -220,7 +224,7 @@ pub enum Login {
     /// Its sign-in is set aside: one click switches to it. `stale` once it has not been used for
     /// about four weeks, when Claude may ask to sign in again.
     Saved { stale: bool },
-    /// Signed in to before CC Same kept sign-ins: sign in to it once more to switch to it later.
+    /// Signed in to before Claude Companion kept sign-ins: sign in to it once more to switch to it later.
     Unknown,
 }
 
@@ -292,7 +296,7 @@ pub fn accounts(ov: &Overview) -> Vec<Account> {
         Some(saved) => Login::Saved { stale: saved.stale() },
         None => Login::Unknown,
     };
-    let now = cc_same_core::fsx::now_secs();
+    let now = claude_companion_core::fsx::now_secs();
     let mut groups: Vec<Vec<&PartitionView>> = Vec::new();
     for p in ov.surface(Surface::Code).map(|c| c.partitions.as_slice()).unwrap_or_default() {
         match groups.iter_mut().find(|g| g[0].part.acct == p.part.acct) {
@@ -352,7 +356,7 @@ pub fn accounts(ov: &Overview) -> Vec<Account> {
 /// What keeps `text` from being an account's name, given the names the other accounts go by
 /// (`(name, account)` pairs); `None` when it can be saved. Empty text takes the name away.
 pub fn name_problem(text: &str, others: &[(String, String)]) -> Option<String> {
-    use cc_same_core::accounts::{ALIAS_MAX, normalize_alias};
+    use claude_companion_core::accounts::{ALIAS_MAX, normalize_alias};
     if text.trim().is_empty() {
         return None;
     }
@@ -483,8 +487,8 @@ mod tests {
     /// the other's organization empty (signing in there reused the organization Claude still
     /// remembered). Claude runs, signed in to Bob; `open_org` is what its log says.
     fn two_accounts_in_two_orgs(open_org: Option<&str>) -> Overview {
-        use cc_same_core::report::{PlanView, SurfaceView};
-        use cc_same_core::{AppState, Config, Partition};
+        use claude_companion_core::report::{PlanView, SurfaceView};
+        use claude_companion_core::{AppState, Config, Partition};
         let list = |acct: &str, org: &str, sessions: usize, missing: usize| PartitionView {
             part: Partition {
                 surface: Surface::Code,
@@ -524,7 +528,11 @@ mod tests {
             plan: PlanView::default(),
             warnings: Vec::new(),
             retention: Default::default(),
-            logins: cc_same_core::logins::Logins { supported: false, signed_in: Some(BOB.into()), saved: Vec::new() },
+            logins: claude_companion_core::logins::Logins {
+                supported: false,
+                signed_in: Some(BOB.into()),
+                saved: Vec::new(),
+            },
             roster: Default::default(),
             usage: Default::default(),
             service: Default::default(),
@@ -564,7 +572,7 @@ mod tests {
 
     #[test]
     fn a_name_takes_the_place_of_the_email() {
-        use cc_same_core::accounts::{Roster, Slot};
+        use claude_companion_core::accounts::{Roster, Slot};
         let _locale = crate::i18n::TEST_LOCALE.lock().unwrap_or_else(|e| e.into_inner());
         rust_i18n::set_locale("en");
         const CY: &str = "cccccccc-0000-4000-8000-000000000003";
@@ -598,7 +606,7 @@ mod tests {
 
     #[test]
     fn the_list_comes_first_in_number_order() {
-        use cc_same_core::accounts::{Roster, Slot};
+        use claude_companion_core::accounts::{Roster, Slot};
         let _locale = crate::i18n::TEST_LOCALE.lock().unwrap_or_else(|e| e.into_inner());
         rust_i18n::set_locale("en");
         const CY: &str = "cccccccc-0000-4000-8000-000000000003";
@@ -612,8 +620,8 @@ mod tests {
         };
         // Bob and Cy are in the list (Cy has no session list yet); Ada only has her sessions.
         ov.roster = Roster { version: 1, slots: vec![slot(1, BOB, Some("home")), slot(2, CY, None)] };
-        let now = cc_same_core::fsx::now_secs();
-        let read = cc_same_core::usage::Usage { at: now - 60.0, five_hour: Some(97.0), weekly: Some(40.0) };
+        let now = claude_companion_core::fsx::now_secs();
+        let read = claude_companion_core::usage::Usage { at: now - 60.0, five_hour: Some(97.0), weekly: Some(40.0) };
         ov.usage = [(BOB.to_string(), read)].into();
         let rows = accounts(&ov);
         let shown: Vec<_> = rows.iter().map(|a| (a.name.as_str(), a.number, a.has_lists)).collect();
@@ -635,7 +643,8 @@ mod tests {
         let _locale = crate::i18n::TEST_LOCALE.lock().unwrap_or_else(|e| e.into_inner());
         rust_i18n::set_locale("en");
         let now = 1_000_000.0;
-        let read = |age: f64, five_hour, weekly| cc_same_core::usage::Usage { at: now - age, five_hour, weekly };
+        let read =
+            |age: f64, five_hour, weekly| claude_companion_core::usage::Usage { at: now - age, five_hour, weekly };
         let fresh = PlanUse::of(&read(60.0, Some(12.4), Some(58.0)), now, true).unwrap();
         assert_eq!((fresh.short().as_str(), fresh.fullness()), ("7d 58%", Fullness::Roomy));
         assert!(!fresh.stale && fresh.age().is_none());

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Build "CC Same.app", a DMG and release archives for this Mac's architecture.
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Songkeys (cc-same, MIT)
+# Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+# Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
+# Build "Claude Companion.app", a DMG and release archives for this Mac's architecture.
 #
 #   scripts/bundle-macos.sh                                        # ad-hoc signed, in dist/
 #   CODESIGN_IDENTITY="Developer ID Application: …" scripts/bundle-macos.sh
@@ -15,9 +19,9 @@ case "$(uname -m)" in
   arm64 | aarch64) arch=arm64 ;;
   *) arch="$(uname -m)" ;;
 esac
-out="${CC_SAME_OUTPUT:-dist}"
+out="${CLAUDE_COMPANION_OUTPUT:-dist}"
 identity="${CODESIGN_IDENTITY:--}"
-bundle_id="io.github.songkeys.cc-same"
+bundle_id="io.github.slammingprogramming.claude-companion"
 mkdir -p "$out"
 
 if [[ "${NOTARIZE:-0}" == "1" ]]; then
@@ -27,13 +31,13 @@ if [[ "${NOTARIZE:-0}" == "1" ]]; then
   done
 fi
 
-cargo build --release -p cc-same
+cargo build --release -p claude-companion
 cargo build --release --manifest-path crates/app/Cargo.toml
 
-app="$out/CC Same.app"
+app="$out/Claude Companion.app"
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-cp target/release/cc-same-app "$app/Contents/MacOS/CC Same"
+cp target/release/claude-companion-app "$app/Contents/MacOS/Claude Companion"
 cp crates/app/resources/macos/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 sed "s/__VERSION__/$version/g" crates/app/resources/macos/Info.plist > "$app/Contents/Info.plist"
 xattr -cr "$app"
@@ -51,17 +55,17 @@ notarize() {
   xcrun notarytool submit "$1" --key "$APPLE_API_KEY" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait
 }
 
-sign "$app/Contents/MacOS/CC Same" "$bundle_id"
+sign "$app/Contents/MacOS/Claude Companion" "$bundle_id"
 sign "$app" "$bundle_id" crates/app/resources/macos/entitlements.plist
 codesign --verify --deep --strict --verbose=2 "$app"
 
-cli="$(mktemp -d "${TMPDIR:-/tmp}/cc-same-cli.XXXXXX")"
-stage="$(mktemp -d "${TMPDIR:-/tmp}/cc-same-dmg.XXXXXX")"
+cli="$(mktemp -d "${TMPDIR:-/tmp}/claude-companion-cli.XXXXXX")"
+stage="$(mktemp -d "${TMPDIR:-/tmp}/claude-companion-dmg.XXXXXX")"
 trap 'rm -rf -- "$cli" "$stage"' EXIT
-cp target/release/cc-same "$cli/cc-same"
-sign "$cli/cc-same" "$bundle_id.cli"
+cp target/release/claude-companion "$cli/claude-companion"
+sign "$cli/claude-companion" "$bundle_id.cli"
 
-zip="$out/CC-Same-$version-macos-$arch.zip"
+zip="$out/Claude-Companion-$version-macos-$arch.zip"
 make_zip() {
   rm -f "$zip"
   COPYFILE_DISABLE=1 ditto -c -k --norsrc --noextattr --keepParent "$app" "$zip"
@@ -75,15 +79,15 @@ if [[ "${NOTARIZE:-0}" == "1" ]]; then
   spctl --assess --type execute --verbose=2 "$app"
   make_zip
   # A bare executable cannot carry a ticket; notarizing it registers it with Gatekeeper.
-  ditto -c -k --keepParent "$cli/cc-same" "$cli/notarize.zip"
+  ditto -c -k --keepParent "$cli/claude-companion" "$cli/notarize.zip"
   notarize "$cli/notarize.zip"
 fi
 
-dmg="$out/CC-Same-$version-macos-$arch.dmg"
+dmg="$out/Claude-Companion-$version-macos-$arch.dmg"
 rm -f "$dmg"
-COPYFILE_DISABLE=1 ditto --norsrc --noextattr "$app" "$stage/CC Same.app"
+COPYFILE_DISABLE=1 ditto --norsrc --noextattr "$app" "$stage/Claude Companion.app"
 ln -s /Applications "$stage/Applications"
-hdiutil create -quiet -ov -format ULFO -fs HFS+ -volname "CC Same $version" -srcfolder "$stage" "$dmg"
+hdiutil create -quiet -ov -format ULFO -fs HFS+ -volname "Claude Companion $version" -srcfolder "$stage" "$dmg"
 if [[ "$identity" != "-" ]]; then
   codesign --force --timestamp --sign "$identity" "$dmg"
 fi
@@ -93,7 +97,7 @@ if [[ "${NOTARIZE:-0}" == "1" ]]; then
   xcrun stapler validate "$dmg"
 fi
 
-cli_archive="$out/cc-same-cli-$version-macos-$arch.tar.gz"
-tar -C "$cli" -czf "$cli_archive" cc-same
+cli_archive="$out/claude-companion-cli-$version-macos-$arch.tar.gz"
+tar -C "$cli" -czf "$cli_archive" claude-companion
 
 shasum -a 256 "$zip" "$dmg" "$cli_archive"

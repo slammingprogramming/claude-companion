@@ -1,13 +1,17 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! Where Claude Desktop keeps its data on each platform, and where we keep ours.
 //!
-//! | | Claude Desktop data | Desktop logs | cc-same state |
+//! | | Claude Desktop data | Desktop logs | claude-companion state |
 //! |---|---|---|---|
-//! | macOS | `~/Library/Application Support/Claude` | `~/Library/Logs/Claude` | `~/Library/Application Support/cc-same` |
-//! | Windows | `%APPDATA%\Claude` (Store build: `%LOCALAPPDATA%\Claude-Data\<package>`, before Desktop 3 `%LOCALAPPDATA%\Packages\<package>\LocalCache\Roaming\Claude`) | `<data>\logs` | `%APPDATA%\cc-same` |
-//! | Linux | `~/.config/Claude` | `<data>/logs` | `~/.local/share/cc-same` |
+//! | macOS | `~/Library/Application Support/Claude` | `~/Library/Logs/Claude` | `~/Library/Application Support/claude-companion` |
+//! | Windows | `%APPDATA%\Claude` (Store build: `%LOCALAPPDATA%\Claude-Data\<package>`, before Desktop 3 `%LOCALAPPDATA%\Packages\<package>\LocalCache\Roaming\Claude`) | `<data>\logs` | `%APPDATA%\claude-companion` |
+//! | Linux | `~/.config/Claude` | `<data>/logs` | `~/.local/share/claude-companion` |
 //!
-//! Every location can be overridden with an environment variable (`CC_SAME_USER_DATA`,
-//! `CC_SAME_STATE_DIR`, `CC_SAME_DESKTOP_LOG_DIR`, `CC_SAME_PROJECTS`).
+//! Every location can be overridden with an environment variable (`CLAUDE_COMPANION_USER_DATA`,
+//! `CLAUDE_COMPANION_STATE_DIR`, `CLAUDE_COMPANION_DESKTOP_LOG_DIR`, `CLAUDE_COMPANION_PROJECTS`).
 
 use crate::model::Surface;
 use std::env;
@@ -35,10 +39,10 @@ pub struct Paths {
 }
 
 impl Paths {
-    /// Default locations for this platform, honouring the `CC_SAME_*` overrides.
+    /// Default locations for this platform, honouring the `CLAUDE_COMPANION_*` overrides.
     pub fn detect() -> Paths {
-        let user_data = env_path("CC_SAME_USER_DATA").unwrap_or_else(default_user_data);
-        let state_dir = env_path("CC_SAME_STATE_DIR").unwrap_or_else(|| {
+        let user_data = env_path("CLAUDE_COMPANION_USER_DATA").unwrap_or_else(default_user_data);
+        let state_dir = env_path("CLAUDE_COMPANION_STATE_DIR").unwrap_or_else(|| {
             let dir = default_state_dir();
             adopt_legacy_state(&dir);
             dir
@@ -47,10 +51,11 @@ impl Paths {
     }
 
     pub fn new(user_data: PathBuf, state_dir: PathBuf) -> Paths {
-        let desktop_logs = env_path("CC_SAME_DESKTOP_LOG_DIR").unwrap_or_else(|| default_desktop_logs(&user_data));
+        let desktop_logs =
+            env_path("CLAUDE_COMPANION_DESKTOP_LOG_DIR").unwrap_or_else(|| default_desktop_logs(&user_data));
         let log_file = default_log_file(&state_dir);
         let claude_home = env_path("CLAUDE_CONFIG_DIR").unwrap_or_else(|| home().join(".claude"));
-        let projects = match env::var_os("CC_SAME_PROJECTS") {
+        let projects = match env::var_os("CLAUDE_COMPANION_PROJECTS") {
             Some(v) if !v.is_empty() => env::split_paths(&v).collect(),
             _ => {
                 let mut roots = vec![home().join(".claude").join("projects")];
@@ -114,7 +119,7 @@ impl Paths {
         self.state_dir.join("bin")
     }
 
-    /// What CC Same last changed in Claude Code's settings, so it can be put back.
+    /// What Claude Companion last changed in Claude Code's settings, so it can be put back.
     pub fn retention_undo_file(&self) -> PathBuf {
         self.state_dir.join("retention-undo.json")
     }
@@ -233,7 +238,7 @@ fn default_desktop_logs(user_data: &Path) -> PathBuf {
 const LEGACY_NAMES: &[&str] = &["uni-claude"];
 
 pub fn default_state_dir() -> PathBuf {
-    state_dir_named("cc-same")
+    state_dir_named("claude-companion")
 }
 
 fn state_dir_named(name: &str) -> PathBuf {
@@ -255,7 +260,7 @@ fn adopt_legacy_state(state_dir: &Path) {
         if old.is_dir() && std::fs::rename(&old, state_dir).is_ok() {
             if cfg!(target_os = "macos") {
                 let logs = home().join("Library").join("Logs");
-                let _ = std::fs::rename(logs.join(format!("{legacy}.log")), logs.join("cc-same.log"));
+                let _ = std::fs::rename(logs.join(format!("{legacy}.log")), logs.join("claude-companion.log"));
             }
             return;
         }
@@ -264,9 +269,9 @@ fn adopt_legacy_state(state_dir: &Path) {
 
 fn default_log_file(state_dir: &Path) -> PathBuf {
     if cfg!(target_os = "macos") && state_dir == default_state_dir() {
-        home().join("Library").join("Logs").join("cc-same.log")
+        home().join("Library").join("Logs").join("claude-companion.log")
     } else {
-        state_dir.join("cc-same.log")
+        state_dir.join("claude-companion.log")
     }
 }
 

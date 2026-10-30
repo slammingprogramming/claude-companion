@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=CC Same
+Name=Claude Companion
 Comment=Keep Claude Desktop sessions identical across your accounts
-Exec=cc-same-app
-Icon=cc-same
+Exec=claude-companion-app
+Icon=claude-companion
 Categories=Utility;
 Terminal=false
-StartupWMClass=io.github.songkeys.cc-same
+StartupWMClass=io.github.slammingprogramming.claude-companion

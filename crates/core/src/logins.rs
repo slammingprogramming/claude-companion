@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! Switching the account Claude Desktop is signed in to.
 //!
 //! Desktop keeps one sign-in: the claude.ai web session (its cookies and the site's storage) and
@@ -12,7 +16,7 @@
 //! then opens on its sign-in page, and signing in there again makes the account switchable again.
 //!
 //! Every move is written to a journal first: a switch that fails is undone, and one that was
-//! interrupted (a crash, a power cut) is undone or finished the next time CC Same looks.
+//! interrupted (a crash, a power cut) is undone or finished the next time Claude Companion looks.
 
 use crate::ctx::Ctx;
 use crate::desktop;
@@ -121,7 +125,9 @@ impl std::fmt::Display for Refused {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Refused::Unsupported => "switching accounts is not supported on this system yet",
-            Refused::NothingSaved => "CC Same has no sign-in saved for that account; sign in to it once in Claude",
+            Refused::NothingSaved => {
+                "Claude Companion has no sign-in saved for that account; sign in to it once in Claude"
+            }
         })
     }
 }
@@ -412,7 +418,7 @@ fn desktop_json(config: &Map<String, Value>) -> Result<Vec<u8>> {
     Ok(out)
 }
 
-/// `recover`, if Claude is not running and no other CC Same run is busy: for startup.
+/// `recover`, if Claude is not running and no other Claude Companion run is busy: for startup.
 pub fn recover_if_idle(ctx: &Ctx) {
     if desktop::is_running(ctx) {
         return;

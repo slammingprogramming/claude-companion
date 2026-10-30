@@ -1,10 +1,14 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! End-to-end behaviour of the sync against fake Claude Desktop data folders.
 //! Every test builds its own temporary tree; nothing touches real data.
 
-use cc_same_core::apply::{apply_plan, run_sync};
-use cc_same_core::plan::build_plan;
-use cc_same_core::watch::{self, WatchOptions};
-use cc_same_core::{
+use claude_companion_core::apply::{apply_plan, run_sync};
+use claude_companion_core::plan::build_plan;
+use claude_companion_core::watch::{self, WatchOptions};
+use claude_companion_core::{
     desktop, fsx, scan, snapshot, Config, Ctx, FakeDesktop, LogSink, Partition, Paths, Plan, State, Surface,
 };
 use serde_json::{json, Value};
@@ -127,7 +131,7 @@ impl Env {
         self.sync_with(&self.ctx());
     }
 
-    fn sync_with(&self, ctx: &Ctx) -> cc_same_core::apply::Outcome {
+    fn sync_with(&self, ctx: &Ctx) -> claude_companion_core::apply::Outcome {
         let (_, out) = run_sync(ctx, "test").unwrap();
         assert!(out.errors.is_empty(), "{:?}", out.errors);
         out

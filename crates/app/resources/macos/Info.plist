@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>CC Same</string>
+    <string>Claude Companion</string>
     <key>CFBundleDisplayName</key>
-    <string>CC Same</string>
+    <string>Claude Companion</string>
     <key>CFBundleIdentifier</key>
-    <string>io.github.songkeys.cc-same</string>
+    <string>io.github.slammingprogramming.claude-companion</string>
     <key>CFBundleExecutable</key>
-    <string>CC Same</string>
+    <string>Claude Companion</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundlePackageType</key>

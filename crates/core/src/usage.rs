@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! How much of each account's plan is used, from Claude Desktop's own record.
 //!
 //! While it runs, Desktop asks claude.ai how much of the open organization's plan is used, and
@@ -7,7 +11,7 @@
 //! icon), and every 15 minutes in between. Since October 2026 (Desktop 2.19675) a switch on
 //! Anthropic's side can pause those in-between checks until the menu has been opened in the last
 //! 24 hours (`[plan-usage] background poll paused: tray not opened recently` in `main.log`), so
-//! even the open account's numbers can be a day old. CC Same only reads that file. It never asks
+//! even the open account's numbers can be a day old. Claude Companion only reads that file. It never asks
 //! Anthropic itself, so it needs no sign-in and no token, and an account's numbers are as fresh as
 //! the last time Claude asked.
 //!

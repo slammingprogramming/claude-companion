@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! Render the app in every state to PNG files, from sample data (macOS, Metal headless).
 //!
 //!     cargo app --example screenshot -- <out-dir> [scene ...]
@@ -18,21 +22,21 @@ fn main() -> anyhow::Result<()> {
 
 #[cfg(target_os = "macos")]
 mod mac {
-    use cc_same_app::i18n;
-    use cc_same_app::model::Busy;
-    use cc_same_app::store::{SigningIn, Store, UpdatePhase, Updates, Waiting};
-    use cc_same_app::theme::{self, ThemeChoice};
-    use cc_same_app::update::{self, Asset, Problem, Release};
-    use cc_same_app::view::UniApp;
-    use cc_same_core::accounts::{Roster, Slot};
-    use cc_same_core::config::{LastSync, PendingRestart};
-    use cc_same_core::desktop::Quitting;
-    use cc_same_core::logins::{Logins, Saved};
-    use cc_same_core::report::{self, Overview};
-    use cc_same_core::service::{Heartbeat, ServiceStatus};
-    use cc_same_core::snapshot::{Manifest, SnapshotPart};
-    use cc_same_core::usage::Usage;
-    use cc_same_core::{Config, Ctx, FakeDesktop, LogSink, Paths, Surface, apply, fsx};
+    use claude_companion_app::i18n;
+    use claude_companion_app::model::Busy;
+    use claude_companion_app::store::{SigningIn, Store, UpdatePhase, Updates, Waiting};
+    use claude_companion_app::theme::{self, ThemeChoice};
+    use claude_companion_app::update::{self, Asset, Problem, Release};
+    use claude_companion_app::view::UniApp;
+    use claude_companion_core::accounts::{Roster, Slot};
+    use claude_companion_core::config::{LastSync, PendingRestart};
+    use claude_companion_core::desktop::Quitting;
+    use claude_companion_core::logins::{Logins, Saved};
+    use claude_companion_core::report::{self, Overview};
+    use claude_companion_core::service::{Heartbeat, ServiceStatus};
+    use claude_companion_core::snapshot::{Manifest, SnapshotPart};
+    use claude_companion_core::usage::Usage;
+    use claude_companion_core::{Config, Ctx, FakeDesktop, LogSink, Paths, Surface, apply, fsx};
     use gpui_kit::base::Root;
     use gpui_kit::{AppContext as _, Entity, HeadlessAppContext, px, size};
     use serde_json::json;
@@ -255,9 +259,10 @@ mod mac {
         ];
 
         let text_system = gpui_kit::platform::current_platform(true).text_system();
-        let mut cx = HeadlessAppContext::with_platform(text_system, Arc::new(cc_same_app::assets::Assets), || {
-            gpui_kit::platform::current_headless_renderer()
-        });
+        let mut cx =
+            HeadlessAppContext::with_platform(text_system, Arc::new(claude_companion_app::assets::Assets), || {
+                gpui_kit::platform::current_headless_renderer()
+            });
         cx.update(|cx| {
             gpui_kit::init(cx);
             theme::install(cx);
@@ -266,9 +271,9 @@ mod mac {
         });
 
         if only.iter().any(|o| o == "live") {
-            let ctx = cc_same_app::context();
+            let ctx = claude_companion_app::context();
             let overview = Some(report::overview(&ctx));
-            let snapshots = cc_same_core::snapshot::list(&ctx);
+            let snapshots = claude_companion_core::snapshot::list(&ctx);
             i18n::apply(&ctx.config().language);
             let (update, switching, overlay) = (Update::None, Switching::Idle, Overlay::None);
             let shot = Shot { busy: None, update, switching, overlay, height: HEIGHT };
@@ -358,12 +363,12 @@ mod mac {
                 Overlay::SettingsToast => {
                     this.open_settings(window, cx);
                     let message = i18n::tf("update.up_to_date", &[("version", &update::VERSION)]);
-                    cc_same_app::view::show_outcome(&Ok(message), window, cx);
+                    claude_companion_app::view::show_outcome(&Ok(message), window, cx);
                 }
                 Overlay::Notes => {
                     let release = sample_release();
                     let title = i18n::tf("update.notes_title", &[("version", &release.version)]);
-                    cc_same_app::view::open_notes(title, release.notes, window, cx);
+                    claude_companion_app::view::open_notes(title, release.notes, window, cx);
                 }
             })
         })?;
@@ -513,7 +518,7 @@ mod mac {
                 ServiceStatus { installed: true, running: Some(true), detail: "running".into(), ..Default::default() };
             ov.heartbeat = Some(Heartbeat {
                 pid: 1,
-                version: cc_same_core::VERSION.into(),
+                version: claude_companion_core::VERSION.into(),
                 exe: String::new(),
                 started_at: now - 3600.0,
                 heartbeat_at: now - 4.0,
@@ -600,7 +605,7 @@ mod mac {
         Some(s.overview())
     }
 
-    /// Ada goes by "work"; the third account joined the list without an email CC Same could find,
+    /// Ada goes by "work"; the third account joined the list without an email Claude Companion could find,
     /// and goes by "studio".
     fn named(s: &Sample) -> Option<Overview> {
         let mut ov = in_sync(s)?;
@@ -670,10 +675,10 @@ mod mac {
         Release {
             version: semver::Version::new(0, 2, 0),
             notes,
-            page: "https://github.com/songkeys/cc-same/releases/tag/v0.2.0".into(),
+            page: "https://github.com/slammingprogramming/claude-companion/releases/tag/v0.2.0".into(),
             asset: Some(Asset {
-                name: "CC-Same-0.2.0-macos-arm64.zip".into(),
-                url: "https://github.com/songkeys/cc-same/releases/download/v0.2.0/CC-Same-0.2.0-macos-arm64.zip"
+                name: "Claude-Companion-0.2.0-macos-arm64.zip".into(),
+                url: "https://github.com/slammingprogramming/claude-companion/releases/download/v0.2.0/Claude-Companion-0.2.0-macos-arm64.zip"
                     .into(),
                 size: 1000,
                 sha256: None,
@@ -691,7 +696,7 @@ mod mac {
         }
         updates.phase = match update {
             Update::Downloading => UpdatePhase::Downloading(Arc::new(AtomicU64::new(420))),
-            Update::Ready => UpdatePhase::Ready(PathBuf::from("/tmp/CC Same.app")),
+            Update::Ready => UpdatePhase::Ready(PathBuf::from("/tmp/Claude Companion.app")),
             _ => UpdatePhase::Idle,
         };
         if let Update::Failed = update {

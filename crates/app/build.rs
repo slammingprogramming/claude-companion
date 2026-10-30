@@ -1,13 +1,17 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 use std::path::Path;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     // rust-i18n reads the messages while compiling; without this, editing them alone rebuilds nothing.
     println!("cargo:rerun-if-changed=locales");
-    println!("cargo:rerun-if-env-changed=CC_SAME_SKIP_RESOURCES");
-    // `CC_SAME_SKIP_RESOURCES=1` lets `cargo check` run for Windows from another OS.
+    println!("cargo:rerun-if-env-changed=CLAUDE_COMPANION_SKIP_RESOURCES");
+    // `CLAUDE_COMPANION_SKIP_RESOURCES=1` lets `cargo check` run for Windows from another OS.
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
-        && std::env::var_os("CC_SAME_SKIP_RESOURCES").is_none()
+        && std::env::var_os("CLAUDE_COMPANION_SKIP_RESOURCES").is_none()
     {
         embed_windows_resources();
     }
@@ -17,7 +21,7 @@ fn main() {
 /// per-monitor DPI) comes from GPUI itself; a second one would clash at link time.
 fn embed_windows_resources() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("resources").join("windows");
-    let icon = dir.join("cc-same.ico");
+    let icon = dir.join("claude-companion.ico");
     println!("cargo:rerun-if-changed={}", icon.display());
     let esc = |p: &Path| p.to_string_lossy().replace('\\', "\\\\");
     let version = env!("CARGO_PKG_VERSION");
@@ -45,11 +49,11 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "FileDescription", "CC Same\0"
+            VALUE "FileDescription", "Claude Companion\0"
             VALUE "FileVersion", "{version}\0"
-            VALUE "InternalName", "cc-same-app\0"
-            VALUE "OriginalFilename", "CC Same.exe\0"
-            VALUE "ProductName", "CC Same\0"
+            VALUE "InternalName", "claude-companion-app\0"
+            VALUE "OriginalFilename", "Claude Companion.exe\0"
+            VALUE "ProductName", "Claude Companion\0"
             VALUE "ProductVersion", "{version}\0"
         END
     END
@@ -60,7 +64,7 @@ BEGIN
 END
 "#,
     );
-    let out = Path::new(&std::env::var("OUT_DIR").unwrap()).join("cc-same.rc");
+    let out = Path::new(&std::env::var("OUT_DIR").unwrap()).join("claude-companion.rc");
     std::fs::write(&out, rc).expect("write the Windows resource script");
     embed_resource::compile(&out, embed_resource::NONE)
         .manifest_required()

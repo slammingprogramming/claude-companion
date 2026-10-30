@@ -1,7 +1,23 @@
 # Changelog
 
-What changed in each version of CC Same. The app shows these notes after it updates, and under
-Settings › Updates.
+What changed in each version of Claude Companion. The app shows these notes after it updates, and
+under Settings › Updates.
+
+Versions up to 0.1.12 are the history of [cc-same](https://github.com/songkeys/cc-same) by
+Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0.1.12.
+
+## 0.2.0 - 2026-10-30
+
+### Changed
+
+- **Claude Companion.** This is a hard fork of cc-same 0.1.12, renamed to Claude Companion. The
+  command is `claude-companion`, settings and state live in a `claude-companion` folder, the
+  environment variables start with `CLAUDE_COMPANION_`, and updates come from this project's
+  releases. It runs alongside a cc-same install without sharing its state, but run only one of
+  the two background agents.
+- **New license: AGPL-3.0-or-later.** The inherited code stays available under its original MIT
+  terms upstream; its notices are kept in `LICENSES/`, and `NOTICE.md` credits every project this
+  one builds on.
 
 ## 0.1.12 - 2026-10-28
 

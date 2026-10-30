@@ -1,5 +1,5 @@
 [package]
-name = "cc-same-core"
+name = "claude-companion-core"
 description = "Keep Claude Desktop's local sessions identical across all your accounts"
 version.workspace = true
 edition.workspace = true

@@ -2,139 +2,85 @@
   <img src="assets/icon.png" width="112" alt="">
 </p>
 
-<h1 align="center">CC Same</h1>
+<h1 align="center">Claude Companion</h1>
 
 <p align="center">
-  <a href="https://github.com/songkeys/cc-same/actions/workflows/ci.yml"><img src="https://github.com/songkeys/cc-same/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/songkeys/cc-same/releases"><img src="https://img.shields.io/github/v/release/songkeys/cc-same?include_prereleases&label=release" alt="Release"></a>
-</p>
-
-<p align="center">
-  Keep Claude Desktop's local sessions identical across all your accounts.<br>
+  A desktop app and command-line tool that keep Claude Desktop's local sessions identical across
+  all your accounts, on Windows, macOS and Linux.<br>
   Sign out, sign in with another account, and everything is still there.
 </p>
 
-<p align="center">
-  <img src="docs/images/app-light.png" width="380" alt="CC Same in light mode">
-  &nbsp;
-  <img src="docs/images/app-dark.png" width="380" alt="CC Same in dark mode">
-</p>
+> **Status: early fork.** Claude Companion is a hard fork of [cc-same](https://github.com/songkeys/cc-same)
+> by Songkeys, with the goals listed under [Roadmap](#roadmap). Today it does what cc-same 0.1.12
+> does, under a new name and license. The roadmap items are not done yet; this README says so
+> plainly rather than promising them.
 
 ## Why
 
 Claude Desktop keeps a separate list of local Code sessions for every account and organization.
 Switch accounts and the sidebar is empty, even though every conversation is still on disk in
-`~/.claude/projects`. CC Same keeps every account's list in step: sessions, titles, archive
-state, deletions, scheduled tasks and task suggestions. Whichever account you sign in to looks the same.
+`~/.claude/projects`. Claude Companion keeps every account's list in step: sessions, titles,
+archive state, deletions, scheduled tasks and task suggestions.
 
-It works on **macOS**, **Windows** and **Linux** (unofficial Linux builds of Claude Desktop), and
-comes as a small desktop app and a command-line tool. Both share one engine.
+It comes as a desktop app and a command-line tool that share one engine.
 
-## The app
+## What works today
 
-- **One glance.** Each account is a ring; rings that share every session overlap, and one that is
-  behind drifts out until it catches up. One sentence says what is going on.
-- **One switch.** *Sync in the background* keeps every account identical from login, even with the
-  window closed.
-- **Menu bar / system tray.** The status, *Sync now* and the background switch are a click away.
-  Hide the icon in Settings, and choose whether the app opens quietly at login. On macOS the app
-  is in the Dock only while its window is open, unless you set it to stay.
-- **Speaks your language.** English, 简体中文, 繁體中文, 日本語, 한국어, Français, Deutsch, Español,
-  Português (Brasil) and Русский, following the system unless you pick one. Light and dark follow
-  the system too.
-- **Undo built in.** Snapshots of every session list, restorable from Settings.
-- **One-click account switching** (macOS). Switch Claude to another account from the window or the
-  menu bar, without signing out: CC Same keeps each sign-in and trades them while Claude restarts.
-  Your accounts form a numbered list, the way [claude-swap](https://github.com/realiti4/claude-swap)
-  keeps one: **Next Account** goes round it, and each account shows its 5-hour and weekly plan
-  usage as Claude last read it.
-- **Keeps itself up to date.** A new version downloads in the background and installs when the
-  window is closed or the app quits; *What's new* shows what changed.
+Inherited from cc-same 0.1.12 (see [NOTICE.md](NOTICE.md)):
 
-## Install
+- Sync of local Code sessions, deletions, scheduled tasks and task suggestions across accounts,
+  with snapshots, a 30-day trash, and atomic writes. Syncing needs no network access.
+- Background sync from login, with a tray / menu bar icon.
+- A numbered account list with aliases, plan usage, and **account switching on macOS**.
+- Ten interface languages, light and dark themes, and update checks against this repository's
+  releases.
 
-**App.** Download `CC-Same-<version>-<platform>` from
-[Releases](https://github.com/songkeys/cc-same/releases): the `.dmg` for `macos-arm64` or `macos-x64`,
-or the archive for `windows-x64`, `linux-x64` or `linux-arm64`. Open it and switch on
-**Sync in the background**. That's all: from then on the app updates itself (Settings › Updates).
+## Roadmap
 
-- The Mac app is signed with a Developer ID and notarized by Apple.
-- The Windows build is not code-signed yet, so SmartScreen may ask first: **More info → Run anyway**.
-- On Linux, unpack the archive into `~/.local`:
-  `tar -xzf CC-Same-<version>-linux-x64.tar.gz -C ~/.local --strip-components=1`.
-  The tray icon needs StatusNotifier support: KDE has it, and so does GNOME with the AppIndicator
-  extension (on by default in Ubuntu). Without it, closing the window quits the app; background
-  sync keeps running either way.
-
-**Command line.**
-
-```bash
-cargo install --locked --git https://github.com/songkeys/cc-same cc-same
-cc-same install
-```
-
-or grab `cc-same-cli-<version>-<platform>` from Releases.
-
-The first time a sync copies sessions into the account Claude has open, quit and reopen Claude
-once: it only reads its session list at startup. After that, switching accounts needs nothing.
+1. **GUI and CLI parity.** Every feature reachable from one is reachable from the other.
+2. **Windows, macOS and Linux, fully.** Account switching, quitting and starting Claude Desktop,
+   and background sync on all three (switching is macOS-only in the inherited code).
+3. **Rename and relicense.** Done: the project is Claude Companion, `AGPL-3.0-or-later`.
+4. **Features from two sibling projects**, re-implemented in Rust and credited:
+   - [claude-desktop-session-sync](https://github.com/RasmusKD/claude-desktop-session-sync):
+     sidebar groups, three-way scheduled-task merging, account freezing.
+   - [claude-switcher](https://github.com/nyxon-tech/claude-switcher): copy / move / merge chats
+     between accounts, recover lost chats, journaled undo, usage statistics, export.
+5. **Credits kept honest**: see [NOTICE.md](NOTICE.md).
 
 ## Using the command line
 
 ```text
-cc-same doctor         what every account has, and anything that needs attention
-cc-same plan           what a sync would change (dry run)
-cc-same sync           sync once
-cc-same install        sync, then keep syncing in the background from login
-cc-same uninstall      stop background syncing (every account keeps its full copy)
-cc-same status         background sync and the last sync
-cc-same snapshots      list snapshots
-cc-same restore <id>   put every session list back as it was (quit Claude first)
-cc-same retention      how long Claude Code keeps transcripts (--keep, --undo)
-cc-same accounts       your accounts, numbered, with their plan usage (--json)
-cc-same switch [<who>] switch Claude to an account, or the next one (--strategy best) (macOS)
-cc-same add            restart Claude signed out, to add an account (the current one is kept)
-cc-same remove <who>   take an account off the list, forgetting the sign-in kept for it
-cc-same alias <who> <name>, disable <who>, enable <who>, move <who> <number>
-cc-same config         --exclude <account-id>, --auto-join off, …
+claude-companion doctor         what every account has, and anything that needs attention
+claude-companion plan           what a sync would change (dry run)
+claude-companion sync           sync once
+claude-companion install        sync, then keep syncing in the background from login
+claude-companion uninstall      stop background syncing (every account keeps its full copy)
+claude-companion status         background sync and the last sync
+claude-companion snapshots      list snapshots
+claude-companion restore <id>   put every session list back as it was (quit Claude first)
+claude-companion retention      how long Claude Code keeps transcripts (--keep, --undo)
+claude-companion accounts       your accounts, numbered, with their plan usage (--json)
+claude-companion switch [<who>] switch Claude to an account, or the next one (macOS for now)
+claude-companion add            restart Claude signed out, to add an account
+claude-companion remove <who>   take an account off the list, forgetting its saved sign-in
+claude-companion alias <who> <name>, disable <who>, enable <who>, move <who> <number>
+claude-companion config         --exclude <account-id>, --auto-join off, …
 ```
 
-## What stays in sync
-
-| | |
-| --- | --- |
-| Local Code sessions: title, archive state, model, permission mode, folder grants, linked PRs, worktrees | ✅ |
-| Deletions (to a trash folder, recoverable) | ✅ |
-| Code scheduled tasks and task suggestions | ✅ |
-| Transcripts, `CLAUDE.md`, skills, `settings.json`, local MCP servers | Already shared by Claude |
-| Connectors, Remote Control links, published artifacts, pins | Kept per account |
-| Sidebar groups and order | ✗ Synced with each account's server settings, replaced at every sign-in |
-| claude.ai chats, projects, memory, cloud sessions | ✗ Stored in each account in the cloud |
-| Cowork tasks | ✗ On Pro and Max plans, new ones run in the cloud too |
-
-## How it works
-
-Claude Desktop writes only the index of the account it has open, and reads it only when that
-account loads. CC Same never touches an index Claude has loaded. It mirrors that index to the
-others, and catches up the one you left after you switch accounts or quit. For each session the
-newest copy wins; deletions travel as Claude's own `deleted_<id>` markers.
-
-Every index stays a real folder. The popular "merge the folders and symlink them" trick is
-unsafe with current Claude Desktop, which silently stops saving sessions through a symlinked
-folder. CC Same can undo that setup for you (`cc-same fix-symlinks`).
-
-[docs/how-it-works.md](docs/how-it-works.md) has the details and the evidence.
+The first time a sync copies sessions into the account Claude has open, quit and reopen Claude
+once: it only reads its session list at startup.
 
 ## Safety
 
-- A copy-on-write snapshot of every index is taken before the first change (kept forever) and at
-  most hourly afterwards; `restore` puts any of them back.
-- Nothing is deleted: anything removed or replaced goes to a trash folder for 30 days.
-- Writes are atomic, keep file times, never follow symlinks, and never overwrite a file that
-  appeared or changed since planning.
-- Fields that belong to one account (its connectors, Remote Control mirrors, published
-  artifacts, pins) never travel to another.
-- Syncing needs no network access: everything happens on your machine. The app only goes online
-  to ask GitHub for a new version once a day and to download it; Settings › Updates turns that off.
+- Claude Companion only reads and writes inside Claude Desktop's data folder and its own state
+  folder. Every location can be redirected with `CLAUDE_COMPANION_USER_DATA`,
+  `CLAUDE_COMPANION_STATE_DIR`, `CLAUDE_COMPANION_DESKTOP_LOG_DIR` and `CLAUDE_COMPANION_PROJECTS`,
+  which is how the tests (and any dry run you want) avoid your real Claude setup.
+- A copy-on-write snapshot of every index is taken before the first change and at most hourly
+  afterwards; nothing is deleted without going to a trash folder for 30 days.
+- Writes are atomic, never follow symlinks, and never overwrite a file that appeared or changed
+  since planning.
 
 ## Building from source
 
@@ -143,43 +89,26 @@ cargo build --release                        # CLI (Rust 1.85+)
 cargo test                                   # engine + CLI tests
 cargo app                                    # run the app
 cargo app-test                               # app tests
-scripts/bundle-macos.sh                      # CC Same.app + archives in dist/
-cargo app --example screenshot -- out/       # render every app state to PNG (macOS)
 ```
 
 The app lives in `crates/app` as a workspace of its own, so the CLI never pulls in the GUI
-framework; `cargo app`, `cargo app-build`, `cargo app-clippy` and `cargo app-test` are aliases for it.
-Interface text is in [`crates/app/locales/app.yml`](crates/app/locales/app.yml), one entry per
-message with a line per language.
-
+framework. Interface text is in [`crates/app/locales/app.yml`](crates/app/locales/app.yml).
 Linux needs `clang cmake libfontconfig-dev libssl-dev libvulkan1 libwayland-dev libx11-xcb-dev
-libxkbcommon-x11-dev libzstd-dev pkg-config` for the app.
+libxkbcommon-x11-dev libzstd-dev pkg-config` for the app. [`docs/how-it-works.md`](docs/how-it-works.md)
+describes how Claude Desktop's data is laid out and why the sync is safe.
 
-### Releasing
+## License and credits
 
-Bump `version` in `Cargo.toml` and `crates/app/Cargo.toml` and add a `## <version> - <date>` section
-to [CHANGELOG.md](CHANGELOG.md): it becomes the release notes, and the app shows it as *What's new*.
-Pushing a `v*` tag builds every platform and attaches the files to a GitHub release. Mac builds are
-signed with a Developer ID, notarized and stapled when the repository has these (otherwise they are
-ad-hoc signed):
+Copyright (C) 2026 SlammingProgramming and Claude Companion contributors.
 
-| Name | Kind | What |
-| --- | --- | --- |
-| `APPLE_CERTIFICATE_P12_BASE64` | secret | The Developer ID Application certificate and key, exported as `.p12`, base64 |
-| `APPLE_CERTIFICATE_PASSWORD` | secret | The `.p12` password |
-| `APPLE_API_KEY_P8_BASE64` | secret | An App Store Connect API key (`.p8`), base64 |
-| `APPLE_API_KEY_ID` | variable | That key's ID |
-| `APPLE_API_ISSUER` | variable | The issuer ID shown with the key in App Store Connect |
-| `APPLE_SIGNING_IDENTITY` | variable | `Developer ID Application: <name> (<team>)` |
+Licensed under the [GNU Affero General Public License, version 3 or later](LICENSE). Large parts
+derive from MIT-licensed work whose notices are kept in [`LICENSES/`](LICENSES/); who did what is
+set out in **[NOTICE.md](NOTICE.md)**:
 
-The same on your Mac: `CODESIGN_IDENTITY=… NOTARIZE=1 APPLE_API_KEY=… APPLE_API_KEY_ID=… APPLE_API_ISSUER=…
-scripts/bundle-macos.sh`.
+- [cc-same](https://github.com/songkeys/cc-same) by Songkeys, the base of this fork;
+- [claude-desktop-session-sync](https://github.com/RasmusKD/claude-desktop-session-sync) by RasmusKD;
+- [claude-switcher](https://github.com/nyxon-tech/claude-switcher) by NeezerGu and Nyxon, and
+  [claude-profile-switcher](https://github.com/NeezerGu/claude-profile-switcher) by NeezerGu before it;
+- [claude-swap](https://github.com/realiti4/claude-swap) by realiti4, an inspiration.
 
-The app is built with Longbridge's [GPUI Kit](https://github.com/longbridge/gpui-kit) on
-[GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui), Zed's GPU-accelerated UI
-framework.
-
-## License
-
-[MIT](LICENSE). CC Same is an independent project, not affiliated with or endorsed by Anthropic.
-Claude is a trademark of Anthropic.
+Claude Companion is not affiliated with or endorsed by Anthropic. Claude is a trademark of Anthropic.

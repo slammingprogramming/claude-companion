@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! Carrying out a plan.
 
 use crate::config::{LastSync, State};
@@ -14,7 +18,7 @@ use std::fs::{self, File, OpenOptions};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-/// Exclusive lock on `<state>/lock`, shared with every other cc-same process (and the
+/// Exclusive lock on `<state>/lock`, shared with every other claude-companion process (and the
 /// original Python prototype, which used `flock` on the same file).
 pub struct Lock {
     file: File,
@@ -38,7 +42,7 @@ impl Lock {
                 return Ok(Lock { file });
             }
             if Instant::now() >= deadline {
-                bail!("another cc-same run is in progress");
+                bail!("another claude-companion run is in progress");
             }
             std::thread::sleep(Duration::from_millis(200));
         }

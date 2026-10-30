@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! The main window: a picture of your accounts and one sentence about them, the switch that keeps
 //! them in step, the accounts themselves, and a note only when something needs you. Settings,
 //! snapshots and files live in a sheet behind the gear.
@@ -9,10 +13,10 @@ use crate::settings;
 use crate::store::{Store, StoreEvent, UpdatePhase};
 use crate::theme;
 use crate::update::{self, Release};
-use cc_same_core::desktop::Quitting;
-use cc_same_core::report::Warning;
-use cc_same_core::retention::Limit;
-use cc_same_core::snapshot::Manifest;
+use claude_companion_core::desktop::Quitting;
+use claude_companion_core::report::Warning;
+use claude_companion_core::retention::Limit;
+use claude_companion_core::snapshot::Manifest;
 use gpui_kit::base::{Easing, Transition, transition};
 use gpui_kit::component::avatar::Avatar;
 use gpui_kit::component::button::{Button, ButtonVariant, ButtonVariants as _};
@@ -40,7 +44,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-actions!(cc_same, [Refresh, SyncNow, OpenSettings]);
+actions!(claude_companion, [Refresh, SyncNow, OpenSettings]);
 
 pub struct UniApp {
     store: Entity<Store>,
@@ -300,7 +304,9 @@ impl UniApp {
             let Some(row) = rows.iter().find(|a| a.id == account) else { return };
             // An account as people know it apart from its name: its email, else its ID.
             let known_as = |a: &Account| {
-                a.email.clone().unwrap_or_else(|| tf("account.unnamed", &[("id", &cc_same_core::short(&a.id))]))
+                a.email
+                    .clone()
+                    .unwrap_or_else(|| tf("account.unnamed", &[("id", &claude_companion_core::short(&a.id))]))
             };
             let others: Vec<(String, String)> =
                 rows.iter().filter(|a| a.id != account).filter_map(|a| Some((a.alias.clone()?, known_as(a)))).collect();
@@ -331,7 +337,7 @@ impl UniApp {
                 Some(problem) => div().text_color(theme.danger).child(problem.clone()),
                 None => div()
                     .text_color(theme.muted_foreground)
-                    .child(tf("name.hint", &[("max", &cc_same_core::accounts::ALIAS_MAX)])),
+                    .child(tf("name.hint", &[("max", &claude_companion_core::accounts::ALIAS_MAX)])),
             };
             // Below the description, not in it: the field keeps its own color and line height. The
             // dialog clips its body, so the field's focus ring needs room above it.

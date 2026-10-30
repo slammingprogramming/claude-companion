@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! Updates: the newest release on GitHub, and putting it in place of this copy.
 //!
 //! Once a day, and whenever asked, the app asks GitHub for the latest release. Installing one
@@ -8,7 +12,7 @@
 //! copy waits for the old one to be gone, then tidies up.
 
 use anyhow::{Context as _, anyhow, bail};
-use cc_same_core::{Paths, fsx};
+use claude_companion_core::{Paths, fsx};
 use semver::Version;
 use serde_json::Value;
 use sha2::{Digest as _, Sha256};
@@ -21,9 +25,9 @@ use std::time::{Duration, Instant};
 
 /// This copy's version.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-const LATEST: &str = "https://api.github.com/repos/songkeys/cc-same/releases/latest";
+const LATEST: &str = "https://api.github.com/repos/slammingprogramming/claude-companion/releases/latest";
 /// Where people can download the latest release themselves.
-pub const DOWNLOADS: &str = "https://github.com/songkeys/cc-same/releases/latest";
+pub const DOWNLOADS: &str = "https://github.com/slammingprogramming/claude-companion/releases/latest";
 /// What changed in each version, as of this build.
 pub const CHANGELOG: &str = include_str!("../../../CHANGELOG.md");
 /// Given to a freshly installed copy, followed by the process id of the copy it replaces.
@@ -120,10 +124,10 @@ pub fn current() -> Version {
 }
 
 /// Whether this copy looks after itself: looks for updates, installs them, and keeps the
-/// background agent in step with it. A development build does not (set `CC_SAME_DEV_UPDATE=1`
+/// background agent in step with it. A development build does not (set `CLAUDE_COMPANION_DEV_UPDATE=1`
 /// to try).
 pub fn self_managing() -> bool {
-    !cfg!(debug_assertions) || std::env::var_os("CC_SAME_DEV_UPDATE").is_some()
+    !cfg!(debug_assertions) || std::env::var_os("CLAUDE_COMPANION_DEV_UPDATE").is_some()
 }
 
 /// Whether `path` is somewhere an app cannot stay: a disk image, or the temporary read-only
@@ -151,16 +155,16 @@ fn client(timeout: Duration) -> anyhow::Result<reqwest::blocking::Client> {
     // ring does the cryptography; installing it a second time changes nothing.
     let _ = rustls::crypto::ring::default_provider().install_default();
     Ok(reqwest::blocking::Client::builder()
-        .user_agent(format!("CC-Same/{VERSION} (+https://github.com/songkeys/cc-same)"))
+        .user_agent(format!("Claude-Companion/{VERSION} (+https://github.com/slammingprogramming/claude-companion)"))
         .connect_timeout(Duration::from_secs(20))
         .timeout(timeout)
         .build()?)
 }
 
 /// Where the latest release is described: GitHub, unless a development build is pointed at a
-/// test feed (`CC_SAME_UPDATE_FEED`) to try updates.
+/// test feed (`CLAUDE_COMPANION_UPDATE_FEED`) to try updates.
 fn feed() -> String {
-    match std::env::var("CC_SAME_UPDATE_FEED") {
+    match std::env::var("CLAUDE_COMPANION_UPDATE_FEED") {
         Ok(url) if cfg!(debug_assertions) => url,
         _ => LATEST.to_string(),
     }
@@ -213,7 +217,7 @@ fn parse(json: &Value) -> anyhow::Result<Release> {
     })
 }
 
-/// This system's archive in a release, like `CC-Same-0.2.0-macos-arm64.zip`.
+/// This system's archive in a release, like `Claude-Companion-0.2.0-macos-arm64.zip`.
 fn archive_name(version: &Version) -> Option<String> {
     let platform = match (std::env::consts::OS, std::env::consts::ARCH) {
         ("macos", "aarch64") => "macos-arm64",
@@ -224,7 +228,7 @@ fn archive_name(version: &Version) -> Option<String> {
         _ => return None,
     };
     let extension = if cfg!(target_os = "linux") { "tar.gz" } else { "zip" };
-    Some(format!("CC-Same-{version}-{platform}.{extension}"))
+    Some(format!("Claude-Companion-{version}-{platform}.{extension}"))
 }
 
 // ---------------------------------------------------------------------- downloading
@@ -323,7 +327,7 @@ fn check_version(program: &Path, version: &Version) -> anyhow::Result<()> {
 /// What an update replaces: the app bundle on macOS, the program elsewhere.
 pub fn target() -> Outcome<PathBuf> {
     if !self_managing() {
-        let error = anyhow!("a development build does not update itself (set CC_SAME_DEV_UPDATE=1)");
+        let error = anyhow!("a development build does not update itself (set CLAUDE_COMPANION_DEV_UPDATE=1)");
         return Err(Failure::new(Problem::NotInstalled, error));
     }
     let exe = std::env::current_exe().because(Problem::Other)?;
@@ -356,7 +360,7 @@ fn relaunch(target: &Path, hidden: bool) -> anyhow::Result<()> {
         open.arg("-n");
         // Launch Services starts apps with a fresh environment: pass on this copy's own settings.
         for (name, value) in std::env::vars_os() {
-            if name.to_string_lossy().starts_with("CC_SAME_") {
+            if name.to_string_lossy().starts_with("CLAUDE_COMPANION_") {
                 let mut pair = name;
                 pair.push("=");
                 pair.push(value);
@@ -474,7 +478,7 @@ mod platform {
     use super::*;
 
     pub fn installed(exe: PathBuf) -> Outcome<PathBuf> {
-        // …/CC Same.app/Contents/MacOS/CC Same
+        // …/Claude Companion.app/Contents/MacOS/Claude Companion
         let bundle = exe
             .parent()
             .filter(|dir| dir.ends_with("Contents/MacOS"))
@@ -654,10 +658,10 @@ mod platform {
         run(Command::new("tar").arg("-xzf").arg(archive).arg("-C").arg(dir))
     }
 
-    /// The archive holds `cc-same-<version>/` with `bin/cc-same-app` and `bin/cc-same`.
+    /// The archive holds `claude-companion-<version>/` with `bin/claude-companion-app` and `bin/claude-companion`.
     pub fn find(dir: &Path) -> anyhow::Result<(PathBuf, PathBuf)> {
-        let root = find_entry(dir, |p| p.join("bin").join("cc-same-app").is_file())?;
-        let program = root.join("bin").join("cc-same-app");
+        let root = find_entry(dir, |p| p.join("bin").join("claude-companion-app").is_file())?;
+        let program = root.join("bin").join("claude-companion-app");
         Ok((root, program))
     }
 
@@ -666,11 +670,11 @@ mod platform {
     }
 
     pub fn swap(root: &Path, target: &Path) -> Outcome<()> {
-        replace(&root.join("bin").join("cc-same-app"), target).because(Problem::ReadOnly)?;
+        replace(&root.join("bin").join("claude-companion-app"), target).because(Problem::ReadOnly)?;
         // The command-line tool comes in the same archive; keep it in step when it sits alongside.
-        let cli = target.with_file_name("cc-same");
+        let cli = target.with_file_name("claude-companion");
         if cli.is_file() {
-            let _ = replace(&root.join("bin").join("cc-same"), &cli);
+            let _ = replace(&root.join("bin").join("claude-companion"), &cli);
         }
         Ok(())
     }
@@ -692,7 +696,7 @@ mod platform {
 
     pub fn remove_leftovers(target: &Path) {
         let _ = fs::remove_file(incoming(target));
-        let _ = fs::remove_file(incoming(&target.with_file_name("cc-same")));
+        let _ = fs::remove_file(incoming(&target.with_file_name("claude-companion")));
     }
 
     pub fn wait_for_exit(pid: u32, timeout: Duration) {
@@ -740,10 +744,10 @@ mod tests {
         let name = archive_name(&Version::parse(tag.trim_start_matches('v')).unwrap()).unwrap_or_default();
         serde_json::json!({
             "tag_name": tag,
-            "html_url": format!("https://github.com/songkeys/cc-same/releases/tag/{tag}"),
+            "html_url": format!("https://github.com/slammingprogramming/claude-companion/releases/tag/{tag}"),
             "body": "## What's new\n\n- Updates\n",
             "assets": [
-                { "name": "cc-same-cli-9.9.9-linux-x64.tar.gz", "size": 1, "browser_download_url": "https://x/cli",
+                { "name": "claude-companion-cli-9.9.9-linux-x64.tar.gz", "size": 1, "browser_download_url": "https://x/cli",
                   "digest": "sha256:00" },
                 { "name": name, "size": 1234, "browser_download_url": "https://x/app",
                   "digest": "sha256:ABCDEF" },
@@ -759,7 +763,7 @@ mod tests {
         assert!(release.page.ends_with("/tag/v9.9.9"));
         if archive_name(&release.version).is_some() {
             let asset = release.asset.unwrap();
-            assert!(asset.name.starts_with("CC-Same-9.9.9-"), "{}", asset.name);
+            assert!(asset.name.starts_with("Claude-Companion-9.9.9-"), "{}", asset.name);
             assert_eq!((asset.url.as_str(), asset.size), ("https://x/app", 1234));
             assert_eq!(asset.sha256.as_deref(), Some("abcdef"));
         }
@@ -775,13 +779,13 @@ mod tests {
     fn archive_names_match_the_release_workflow() {
         let name = archive_name(&Version::new(0, 2, 0));
         if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
-            assert_eq!(name.as_deref(), Some("CC-Same-0.2.0-macos-arm64.zip"));
+            assert_eq!(name.as_deref(), Some("Claude-Companion-0.2.0-macos-arm64.zip"));
         }
         if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
-            assert_eq!(name.as_deref(), Some("CC-Same-0.2.0-linux-x64.tar.gz"));
+            assert_eq!(name.as_deref(), Some("Claude-Companion-0.2.0-linux-x64.tar.gz"));
         }
         if cfg!(all(windows, target_arch = "x86_64")) {
-            assert_eq!(name.as_deref(), Some("CC-Same-0.2.0-windows-x64.zip"));
+            assert_eq!(name.as_deref(), Some("Claude-Companion-0.2.0-windows-x64.zip"));
         }
     }
 
@@ -847,12 +851,12 @@ mod tests {
     #[cfg(unix)]
     static SCRIPTS: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-    /// A program that says it is CC Same `version`.
+    /// A program that says it is Claude Companion `version`.
     #[cfg(unix)]
     fn fake_program(path: &Path, version: &str) {
         use std::os::unix::fs::PermissionsExt as _;
         fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(path, format!("#!/bin/sh\necho \"CC Same {version}\"\n")).unwrap();
+        fs::write(path, format!("#!/bin/sh\necho \"Claude Companion {version}\"\n")).unwrap();
         fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
     }
 
@@ -861,7 +865,7 @@ mod tests {
     fn a_new_copy_has_to_start_and_say_its_version() {
         let _turn = SCRIPTS.lock().unwrap_or_else(|e| e.into_inner());
         let dir = tempfile::tempdir().unwrap();
-        let program = dir.path().join("cc-same-app");
+        let program = dir.path().join("claude-companion-app");
         fake_program(&program, "9.9.9");
         check_version(&program, &Version::new(9, 9, 9)).unwrap();
         assert!(check_version(&program, &Version::new(9, 9, 8)).is_err());
@@ -874,19 +878,20 @@ mod tests {
         let _turn = SCRIPTS.lock().unwrap_or_else(|e| e.into_inner());
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("source");
-        fake_program(&source.join("cc-same-9.9.9/bin/cc-same-app"), "9.9.9");
-        fs::write(source.join("cc-same-9.9.9/bin/cc-same"), "new command line").unwrap();
-        let archive = dir.path().join("updates/CC-Same-9.9.9-linux-x64.tar.gz");
+        fake_program(&source.join("claude-companion-9.9.9/bin/claude-companion-app"), "9.9.9");
+        fs::write(source.join("claude-companion-9.9.9/bin/claude-companion"), "new command line").unwrap();
+        let archive = dir.path().join("updates/Claude-Companion-9.9.9-linux-x64.tar.gz");
         fs::create_dir_all(archive.parent().unwrap()).unwrap();
-        run(Command::new("tar").arg("-C").arg(&source).arg("-czf").arg(&archive).arg("cc-same-9.9.9")).unwrap();
-        let target = dir.path().join("prefix/bin/cc-same-app");
+        run(Command::new("tar").arg("-C").arg(&source).arg("-czf").arg(&archive).arg("claude-companion-9.9.9"))
+            .unwrap();
+        let target = dir.path().join("prefix/bin/claude-companion-app");
         fake_program(&target, "0.0.1");
-        fs::write(target.with_file_name("cc-same"), "old command line").unwrap();
+        fs::write(target.with_file_name("claude-companion"), "old command line").unwrap();
 
         let staged = unpack(&archive, &Version::new(9, 9, 9), &target).unwrap();
         platform::swap(&staged, &target).unwrap();
         check_version(&target, &Version::new(9, 9, 9)).unwrap();
-        assert_eq!(fs::read_to_string(target.with_file_name("cc-same")).unwrap(), "new command line");
+        assert_eq!(fs::read_to_string(target.with_file_name("claude-companion")).unwrap(), "new command line");
         platform::remove_leftovers(&target);
         assert_eq!(fs::read_dir(target.parent().unwrap()).unwrap().count(), 2);
         assert!(unpack(&archive, &Version::new(9, 9, 8), &target).is_err_and(|f| f.problem == Problem::Unverified));
@@ -896,15 +901,15 @@ mod tests {
     #[test]
     fn a_mac_bundle_is_swapped_in_and_the_old_one_cleared_away_later() {
         let dir = tempfile::tempdir().unwrap();
-        let target = dir.path().join("Applications/CC Same.app");
-        let staged = dir.path().join("updates/unpacked/CC Same.app");
+        let target = dir.path().join("Applications/Claude Companion.app");
+        let staged = dir.path().join("updates/unpacked/Claude Companion.app");
         for (bundle, what) in [(&target, "old"), (&staged, "new")] {
             fs::create_dir_all(bundle.join("Contents")).unwrap();
             fs::write(bundle.join("Contents/what"), what).unwrap();
         }
         platform::swap(&staged, &target).unwrap();
         assert_eq!(fs::read_to_string(target.join("Contents/what")).unwrap(), "new");
-        let outgoing = dir.path().join("Applications/.CC Same.app.outgoing");
+        let outgoing = dir.path().join("Applications/.Claude Companion.app.outgoing");
         assert_eq!(fs::read_to_string(outgoing.join("Contents/what")).unwrap(), "old");
         platform::remove_leftovers(&target);
         assert!(!outgoing.exists() && !staged.exists());
@@ -916,14 +921,14 @@ mod tests {
         let _turn = SCRIPTS.lock().unwrap_or_else(|e| e.into_inner());
         let dir = tempfile::tempdir().unwrap();
         let bundle = |root: &Path, version: &str| {
-            let app = root.join("CC Same.app");
-            fake_program(&app.join("Contents/MacOS/CC Same"), version);
+            let app = root.join("Claude Companion.app");
+            fake_program(&app.join("Contents/MacOS/Claude Companion"), version);
             run(Command::new("/usr/bin/codesign").args(["--force", "--sign", "-"]).arg(&app)).unwrap();
             app
         };
         let target = bundle(&dir.path().join("Applications"), "0.0.1");
         let new = bundle(&dir.path().join("build"), "9.9.9");
-        let archive = dir.path().join("updates/CC-Same-9.9.9-macos-arm64.zip");
+        let archive = dir.path().join("updates/Claude-Companion-9.9.9-macos-arm64.zip");
         fs::create_dir_all(archive.parent().unwrap()).unwrap();
         run(Command::new("/usr/bin/ditto").args(["-c", "-k", "--keepParent"]).arg(&new).arg(&archive)).unwrap();
         // Neither copy is signed by a team, and Gatekeeper does not accept ad-hoc code.
@@ -936,7 +941,7 @@ mod tests {
     fn a_running_program_is_swapped_in_on_windows() {
         let dir = tempfile::tempdir().unwrap();
         let system = Path::new(&std::env::var_os("SystemRoot").unwrap()).join("System32");
-        let target = dir.path().join("CC Same.exe");
+        let target = dir.path().join("Claude Companion.exe");
         let staged = dir.path().join("unpacked.exe");
         fs::copy(system.join("cmd.exe"), &target).unwrap();
         fs::copy(system.join("hostname.exe"), &staged).unwrap();
@@ -945,11 +950,11 @@ mod tests {
             Command::new(&target).args(["/c", "ping -n 6 127.0.0.1 >nul"]).stdout(Stdio::null()).spawn().unwrap();
         platform::swap(&staged, &target).unwrap();
         assert_eq!(fs::read(&target).unwrap(), fs::read(&staged).unwrap());
-        assert!(dir.path().join("CC Same.exe.old").exists());
+        assert!(dir.path().join("Claude Companion.exe.old").exists());
         let _ = running.kill();
         let _ = running.wait();
         platform::remove_leftovers(&target);
-        assert!(!dir.path().join("CC Same.exe.old").exists());
+        assert!(!dir.path().join("Claude Companion.exe.old").exists());
     }
 
     /// Asks the real GitHub (`cargo test -- --ignored`).
@@ -966,7 +971,8 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn a_disk_image_or_a_translocated_app_is_a_temporary_place() {
-        let translocated = "/private/var/folders/x/T/AppTranslocation/0A1B/d/CC Same.app/Contents/MacOS/CC Same";
+        let translocated =
+            "/private/var/folders/x/T/AppTranslocation/0A1B/d/Claude Companion.app/Contents/MacOS/Claude Companion";
         assert!(temporary_place(Path::new(translocated)));
         let dir = tempfile::tempdir().unwrap();
         assert!(!temporary_place(dir.path()));

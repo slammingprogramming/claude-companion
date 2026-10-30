@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! Snapshots (copy-on-write clones of every index folder), restore, and turning symlinked
 //! folders left by other tools back into real ones.
 
@@ -195,7 +199,7 @@ pub fn fix_symlinks(ctx: &Ctx) -> Result<Vec<PathBuf>> {
             continue;
         }
         let mut tmp = link.clone().into_os_string();
-        tmp.push(".cc-same-materialize");
+        tmp.push(".claude-companion-materialize");
         let tmp = PathBuf::from(tmp);
         if tmp.exists() {
             fs::remove_dir_all(&tmp)?;

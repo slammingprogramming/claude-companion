@@ -1,4 +1,8 @@
-//! The accounts CC Same switches Claude between: a numbered list, the way claude-swap keeps one.
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
+//! The accounts Claude Companion switches Claude between: a numbered list, the way claude-swap keeps one.
 //!
 //! An account joins the list by itself the first time Claude is seen signed in to it, or when a
 //! sign-in is kept for it, and keeps its number until it is removed. It can have a short alias,
@@ -227,7 +231,7 @@ pub enum NotFound {
 impl std::fmt::Display for NotFound {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NotFound::None(query) => write!(f, "no account called {query} (see `cc-same accounts`)"),
+            NotFound::None(query) => write!(f, "no account called {query} (see `claude-companion accounts`)"),
             NotFound::Several(names) => write!(f, "that could be {}", names.join(" or ")),
         }
     }
@@ -257,7 +261,7 @@ impl std::fmt::Display for Refused {
         match self {
             Refused::SignedIn => f.write_str("Claude is signed in to that account; switch to another one first"),
             Refused::NoOther => {
-                f.write_str("no other account to switch to: sign in to one in Claude first (`cc-same add`)")
+                f.write_str("no other account to switch to: sign in to one in Claude first (`claude-companion add`)")
             }
             Refused::BadAlias(alias) => write!(
                 f,

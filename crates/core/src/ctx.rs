@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 use crate::config::Config;
 use crate::model::Record;
 use crate::paths::Paths;
@@ -9,7 +13,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
 /// Overrides for tests and for driving the binaries from scripts
-/// (`CC_SAME_FAKE_RUNNING=0|1`, `CC_SAME_FAKE_ACTIVE=<account>[/<org>],…`).
+/// (`CLAUDE_COMPANION_FAKE_RUNNING=0|1`, `CLAUDE_COMPANION_FAKE_ACTIVE=<account>[/<org>],…`).
 #[derive(Clone, Debug, Default)]
 pub struct FakeDesktop {
     pub running: Option<bool>,
@@ -18,12 +22,12 @@ pub struct FakeDesktop {
 
 impl FakeDesktop {
     pub fn from_env() -> FakeDesktop {
-        let running = match std::env::var("CC_SAME_FAKE_RUNNING").as_deref() {
+        let running = match std::env::var("CLAUDE_COMPANION_FAKE_RUNNING").as_deref() {
             Ok("1") => Some(true),
             Ok("0") => Some(false),
             _ => None,
         };
-        let active = std::env::var("CC_SAME_FAKE_ACTIVE")
+        let active = std::env::var("CLAUDE_COMPANION_FAKE_ACTIVE")
             .ok()
             .map(|v| v.split(',').filter(|s| !s.is_empty()).map(str::to_string).collect());
         FakeDesktop { running, active }

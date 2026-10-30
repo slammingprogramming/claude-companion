@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (c) 2026 Songkeys (cc-same, MIT)
+// Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
+// Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! The menu bar (macOS) and notification area (Windows, Linux) icon: the headline at a glance,
 //! Sync now, the background switch, and the way back to the window.
 
@@ -55,7 +59,7 @@ pub struct Status {
     pub update_enabled: bool,
     /// Switching accounts is available on this system.
     pub can_switch: bool,
-    /// Every account CC Same knows: the list by number, then the others.
+    /// Every account Claude Companion knows: the list by number, then the others.
     pub accounts: Vec<TrayAccount>,
     /// "Next Account: bob@example.com", and whether there is one.
     pub next_label: String,
@@ -100,7 +104,7 @@ impl Status {
             update_enabled,
             // Decided by the system, not by the overview: the menu is built at launch, before the
             // first overview arrives, and the submenu is only ever added then.
-            can_switch: cc_same_core::logins::supported(),
+            can_switch: claude_companion_core::logins::supported(),
             accounts,
             next_label,
             has_next: next.is_some(),
@@ -595,12 +599,12 @@ mod tests {
         let _locale = crate::i18n::TEST_LOCALE.lock().unwrap_or_else(|e| e.into_inner());
         rust_i18n::set_locale("en");
         let use_of = |weekly, age: f64| {
-            let usage = cc_same_core::usage::Usage {
-                at: cc_same_core::fsx::now_secs() - age,
+            let usage = claude_companion_core::usage::Usage {
+                at: claude_companion_core::fsx::now_secs() - age,
                 five_hour: Some(30.0),
                 weekly: Some(weekly),
             };
-            crate::model::PlanUse::of(&usage, cc_same_core::fsx::now_secs(), false)
+            crate::model::PlanUse::of(&usage, claude_companion_core::fsx::now_secs(), false)
         };
         let mut ada = row("a", "ada@example.com", Some(1));
         ada.usage = use_of(40.0, 2.5 * 86_400.0);
@@ -627,7 +631,7 @@ mod tests {
     /// be there from the start, or it never appears.
     #[test]
     fn switch_account_is_offered_before_the_accounts_load() {
-        use cc_same_core::{Config, Ctx, FakeDesktop, LogSink, Paths};
+        use claude_companion_core::{Config, Ctx, FakeDesktop, LogSink, Paths};
         use std::sync::Arc;
         let tmp = tempfile::tempdir().unwrap();
         let paths = Paths::new(tmp.path().join("Claude"), tmp.path().join("state"));
@@ -637,7 +641,7 @@ mod tests {
             let store = Store::preview(ctx, None, Vec::new(), None, cx);
             Status::of(store.read(cx))
         });
-        assert_eq!(status.can_switch, cc_same_core::logins::supported(), "decided before the first overview");
+        assert_eq!(status.can_switch, claude_companion_core::logins::supported(), "decided before the first overview");
         assert!(status.accounts.is_empty() && !status.can_sync);
     }
 }
