@@ -297,11 +297,56 @@ in the list. Other samples are attributed by organization: one used by a single 
 it (from what was noted, else from the session folders). An organization several accounts share,
 such as a team, is left out rather than guessed.
 
+## Sidebar groups
+
+*Opt-in (`config --groups on`). A Rust port of the group merge in
+[claude-desktop-session-sync](https://github.com/RasmusKD/claude-desktop-session-sync); the code
+is `crates/core/src/groups.rs`.*
+
+Custom sidebar groups (a name, the chats in it, their order) are stored per account and
+organization in Claude's **Local Storage**, a LevelDB under `Local Storage/leveldb` in Claude's
+data folder, in two keys of the `https://claude.ai` origin: `dframe-store` (what the sidebar
+loads) and `LSS-persisted.dframe-group-scopes` (a pruned copy). Chromium stores strings as a
+format byte plus Latin-1 or UTF-16LE, and keeps a `META:` record with the origin's size and
+modification time, which has to be kept right when a value changes. Claude also mirrors the value
+into `claude_desktop_config.json`.
+
+A run, only when Claude is closed:
+
+1. Copy the database twice: one pristine backup, and one to read from. (Opening a LevelDB changes
+   its files, so nothing is opened in place until a write is certain.)
+2. Read each included account's entry and merge them **three ways** against the result of the last
+   run (`groups/groups-base.json` in the state folder). A group no base knew is an addition; a
+   rename or reorder in any one account wins over the base; a chat follows the account that moved
+   it.
+3. A group counts as **deleted** only when an account lacks it *after that account was last seen
+   in step with its server copy* — otherwise an account that simply had not received the group yet
+   would delete it everywhere. A deleted id is remembered and never returns, even if an account
+   that missed the deletion hands it back later. With no base, nothing is deleted.
+4. The server copy is the truth for each account: at start Claude replaces the local list with it,
+   unless a **pending marker** (`ccd-sync-pending:ccd/dframe-store`) names the account it starts
+   on, in which case it pushes the local list instead. So the merge sets that marker for the
+   account Claude will start on; the other accounts pick the merged groups up when you switch to
+   them. Start Claude on your usual account after a merge.
+5. Write both keys and the `META` record in one batch, reopen the database and check the values
+   read back; if anything is wrong, put the backup back. Keep the last five backups.
+6. Splice the merged value into the config file's mirror key as raw text (a walk from the document
+   root, so a look-alike key elsewhere is never touched; every other byte, including a byte order
+   mark, stays), after copying the file.
+
+What it does not do: it never runs while Claude does (on Windows, Claude keeps running in the tray
+when its window is closed, so quit it from the tray first), and it has been tested against
+databases built to the same layout, not against a real Claude profile. If a future Claude changes
+the layout, the run finds no group keys, or JSON it cannot read, and changes nothing.
+
 ## What cannot be synced from the outside
 
-- **Sidebar groups and order.** Desktop keeps them per account and organization in its web
-  storage (`dframe-store`) and syncs them with the server as the user setting `ccd/dframe-store`.
-  At every start and account switch the server's copy replaces the local one.
+- **Sidebar groups and order, while Claude runs.** Desktop keeps them per account and organization
+  in its web storage (`dframe-store`) and syncs them with the server as the user setting
+  `ccd/dframe-store`. At every start and account switch the server's copy replaces the local one,
+  and the storage is a database Claude holds open. They can only be merged while Claude is closed
+  (see [Sidebar groups](#sidebar-groups)), and reach an account's server copy only once Claude has
+  started on it.
 - **Pins.** They are star-synced with each account's server settings, so they stay per account.
 - **claude.ai chats, projects, memory, cloud Code and Cowork sessions, connectors, routines.**
   These live in each account on Anthropic's servers.

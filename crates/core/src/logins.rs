@@ -5,7 +5,9 @@
 //! Switching the account Claude Desktop is signed in to.
 //!
 //! Desktop keeps one sign-in: the claude.ai web session (its cookies and the site's storage) and
-//! the tokens it caches in `config.json`, all encrypted with a key in this Mac's login keychain.
+//! the tokens it caches in `config.json`, all encrypted with a key that belongs to the person
+//! using the computer, not to the account (the login keychain on macOS, the user's Windows
+//! credentials, the desktop's secret service on Linux), so the files work for any account.
 //! To switch, Claude quits, the sign-in in use is set aside in `<state>/logins/<account>`, the
 //! target's is put back where it was, and Claude starts again. The files move as they are:
 //! nothing is decrypted, read, refreshed or sent anywhere. Nobody signs out either, since that
@@ -31,7 +33,28 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// Desktop's sign-in in its data folder: the web session and the site's storage.
-const ITEMS: &[&str] = &["Cookies", "Cookies-journal", "Local Storage", "Session Storage", "IndexedDB", "WebStorage"];
+const COMMON: &[&str] = &["Cookies", "Cookies-journal", "Local Storage", "Session Storage", "IndexedDB", "WebStorage"];
+/// What Windows and Linux builds keep besides (Chromium moved Windows cookies into `Network`), as
+/// worked out for claude-switcher by NeezerGu and Nyxon. Pieces that do not exist are skipped.
+#[cfg(not(target_os = "macos"))]
+const OTHERS: &[&str] = &[
+    "Network",
+    "DIPS",
+    "DIPS-wal",
+    "SharedStorage",
+    "SharedStorage-wal",
+    "InterestGroups",
+    "InterestGroups-wal",
+    "Shared Dictionary",
+    "buddy-tokens.json",
+];
+#[cfg(target_os = "macos")]
+const OTHERS: &[&str] = &[];
+
+/// Every piece of Desktop's data folder that makes it signed in as one account.
+fn items() -> impl Iterator<Item = &'static str> {
+    COMMON.iter().chain(OTHERS).copied()
+}
 /// The keys of Desktop's `config.json` that belong to the sign-in.
 const KEYS: &[&str] = &["oauth:tokenCache", "oauth:tokenCacheV2", "lastKnownAccountUuid"];
 /// State Desktop keeps for the signed-in account and makes again: dropped on a switch.
@@ -50,9 +73,9 @@ const UPDATE_TIMEOUT: Duration = Duration::from_secs(180);
 /// A sign-in unused for this long has probably expired on the server.
 pub const EXPIRES_AFTER_DAYS: f64 = 28.0;
 
-/// Whether switching is available on this system: macOS for now.
+/// Whether switching is available on this system: macOS, Windows and Linux.
 pub fn supported() -> bool {
-    cfg!(target_os = "macos")
+    cfg!(any(target_os = "macos", windows, target_os = "linux"))
 }
 
 /// A sign-in set aside, ready to switch to.
@@ -370,7 +393,7 @@ fn swap(paths: &Paths, from: Option<&str>, to: Option<&str>, email: Option<Strin
             journal.save()?;
         }
         // Set the sign-in in use aside.
-        for name in ITEMS {
+        for name in items() {
             let live = paths.user_data.join(name);
             if fs::symlink_metadata(&live).is_ok() {
                 journal.moved(live, stage.join(name))?;
@@ -385,7 +408,7 @@ fn swap(paths: &Paths, from: Option<&str>, to: Option<&str>, email: Option<Strin
         }
         if let Some(account) = to {
             let saved = saved_dir(paths, account);
-            for name in ITEMS {
+            for name in items() {
                 let parked = saved.join(name);
                 if fs::symlink_metadata(&parked).is_ok() {
                     journal.moved(parked, paths.user_data.join(name))?;
@@ -689,5 +712,34 @@ mod tests {
         fs::write(&claude_json, oauth.to_string()).unwrap();
         switch(&mac.ctx, Target::SignedOut, &desktop::Watch::default()).unwrap();
         assert_eq!(list(&mac.ctx).saved[0].email.as_deref(), Some("ada@lovelace.dev"));
+    }
+
+    /// Windows keeps its cookies in `Network`, not at the top level; the sign-in goes with them.
+    #[cfg(not(target_os = "macos"))]
+    #[test]
+    fn windows_style_cookies_in_network_travel_with_the_sign_in() {
+        let mac = Mac::new(ADA);
+        let network = mac.data().join("Network");
+        fs::create_dir_all(&network).unwrap();
+        fs::write(network.join("Cookies"), format!("network cookies of {ADA}")).unwrap();
+        fs::write(mac.data().join("buddy-tokens.json"), format!("buddy of {ADA}")).unwrap();
+        switch(&mac.ctx, Target::SignedOut, &desktop::Watch::default()).unwrap();
+        assert!(!mac.data().join("Network").exists() && !mac.data().join("buddy-tokens.json").exists());
+        let parked = saved_dir(&mac.ctx.paths, ADA);
+        assert_eq!(fs::read_to_string(parked.join("Network/Cookies")).unwrap(), format!("network cookies of {ADA}"));
+        // Grace signs in, then Ada comes back with her own cookies, not Grace's.
+        mac.sign_in(GRACE);
+        fs::create_dir_all(&network).unwrap();
+        fs::write(network.join("Cookies"), format!("network cookies of {GRACE}")).unwrap();
+        switch(&mac.ctx, Target::Account(ADA), &desktop::Watch::default()).unwrap();
+        assert_eq!(fs::read_to_string(network.join("Cookies")).unwrap(), format!("network cookies of {ADA}"));
+        assert_eq!(fs::read_to_string(mac.data().join("buddy-tokens.json")).unwrap(), format!("buddy of {ADA}"));
+        let grace = saved_dir(&mac.ctx.paths, GRACE);
+        assert_eq!(fs::read_to_string(grace.join("Network/Cookies")).unwrap(), format!("network cookies of {GRACE}"));
+    }
+
+    #[test]
+    fn switching_is_available_on_every_supported_system() {
+        assert_eq!(supported(), cfg!(any(target_os = "macos", windows, target_os = "linux")));
     }
 }

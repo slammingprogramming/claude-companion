@@ -18,6 +18,7 @@ pub mod model;
 mod settings;
 pub mod store;
 pub mod theme;
+mod tools;
 mod tray;
 pub mod update;
 pub mod view;

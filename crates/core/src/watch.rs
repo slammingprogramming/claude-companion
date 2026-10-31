@@ -9,6 +9,7 @@ use crate::config::State;
 use crate::ctx::Ctx;
 use crate::desktop;
 use crate::fsx;
+use crate::groups;
 use crate::model::Surface;
 use crate::notify::notify;
 use crate::scan;
@@ -127,6 +128,7 @@ pub fn run(ctx: &Ctx, opts: &WatchOptions, stop: &AtomicBool) {
     let mut last_fp: Option<u64> = None;
     let mut last_full: Option<Instant> = None;
     let mut last_running: Option<bool> = None;
+    let mut last_groups: Option<u64> = None;
     let mut passes = 0u64;
     // The heartbeat has a thread of its own, from the start: a long first sync must not make a
     // working agent look dead to the app.
@@ -203,6 +205,17 @@ pub fn run(ctx: &Ctx, opts: &WatchOptions, stop: &AtomicBool) {
                 // ran must trigger the next pass. Our own writes do too, and that pass finds nothing.
                 last_fp = Some(fp);
                 last_full = Some(Instant::now());
+            }
+            // Sidebar groups are only touched while Claude is closed, and only when something
+            // they depend on changed (a quit changes Local Storage, so it triggers one).
+            if !running && ctx.config().sync_groups {
+                let seen = groups::fingerprint(ctx);
+                if last_groups != Some(seen) {
+                    groups::sync_if_enabled(ctx);
+                    last_groups = Some(groups::fingerprint(ctx));
+                }
+            } else {
+                last_groups = None;
             }
             if last_running.is_some_and(|r| r != running) {
                 ctx.log(if running { "Claude started" } else { "Claude quit" });

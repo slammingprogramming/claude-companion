@@ -31,21 +31,40 @@ Inherited from cc-same 0.1.12 (see [NOTICE.md](NOTICE.md)):
 - Sync of local Code sessions, deletions, scheduled tasks and task suggestions across accounts,
   with snapshots, a 30-day trash, and atomic writes. Syncing needs no network access.
 - Background sync from login, with a tray / menu bar icon.
-- A numbered account list with aliases, plan usage, and **account switching on macOS**.
+- A numbered account list with aliases and plan usage, and **account switching on macOS**.
+- **New in this fork:** account switching on **Windows and Linux** (including ending Claude from
+  the app or with `--force` where Windows keeps it in the tray). It is tested against stand-in
+  data and compiles on all three systems, but it has not yet been run against a real Claude
+  Desktop on Windows or Linux.
+- **New in this fork:** lost-chat rescue, Markdown/HTML export, token statistics and diagnostics,
+  in the app (Settings › Tools) and on the command line; copying chats between accounts on the
+  command line. The app's new screens have not yet been checked by eye on every system.
+- **New in this fork:** one set of **sidebar groups** for every account (off until you turn it on:
+  `claude-companion config --groups on`, or Settings › Sync), re-implemented from
+  claude-desktop-session-sync. It runs only while Claude is closed, backs up Claude's Local Storage
+  first, and has been tested against stand-in databases only, never against a real Claude profile.
+  See [how it works](docs/how-it-works.md#sidebar-groups).
 - Ten interface languages, light and dark themes, and update checks against this repository's
   releases.
 
 ## Roadmap
 
-1. **GUI and CLI parity.** Every feature reachable from one is reachable from the other.
-2. **Windows, macOS and Linux, fully.** Account switching, quitting and starting Claude Desktop,
-   and background sync on all three (switching is macOS-only in the inherited code).
+1. **GUI and CLI parity.** Every feature reachable from one is reachable from the other. Done
+   except `chats copy` in the app, which is aimed at accounts kept out of sync.
+2. **Windows, macOS and Linux, fully.** Account switching, quitting and starting Claude Desktop
+   now exist on all three (see above); real-world testing on Windows and Linux, and background
+   sync checks on each, remain.
 3. **Rename and relicense.** Done: the project is Claude Companion, `AGPL-3.0-or-later`.
 4. **Features from two sibling projects**, re-implemented in Rust and credited:
    - [claude-desktop-session-sync](https://github.com/RasmusKD/claude-desktop-session-sync):
-     sidebar groups, three-way scheduled-task merging, account freezing.
-   - [claude-switcher](https://github.com/nyxon-tech/claude-switcher): copy / move / merge chats
-     between accounts, recover lost chats, journaled undo, usage statistics, export.
+     sidebar groups: done (opt-in, see above). Its three-way scheduled-task merging, deletion
+     stash and backups were already in cc-same (tasks merged three ways, a 30-day trash,
+     snapshots), and its account freezing is what `config --exclude` / the account list's
+     include switch do here, so nothing else is missing.
+   - [claude-switcher](https://github.com/nyxon-tech/claude-switcher): recover lost chats, copy
+     and merge chats between accounts, token statistics, export (command line done; app screens
+     and a doctor check remain). Undo uses sync's snapshots (`restore`) instead of a journal, and
+     there is no *move*, which sync's deletions would turn into deleting the chat everywhere.
 5. **Credits kept honest**: see [NOTICE.md](NOTICE.md).
 
 ## Using the command line
@@ -61,11 +80,18 @@ claude-companion snapshots      list snapshots
 claude-companion restore <id>   put every session list back as it was (quit Claude first)
 claude-companion retention      how long Claude Code keeps transcripts (--keep, --undo)
 claude-companion accounts       your accounts, numbered, with their plan usage (--json)
-claude-companion switch [<who>] switch Claude to an account, or the next one (macOS for now)
-claude-companion add            restart Claude signed out, to add an account
+claude-companion switch [<who>] switch Claude to an account, or the next one (--force on Windows)
+claude-companion add            restart Claude signed out, to add an account (--force on Windows)
 claude-companion remove <who>   take an account off the list, forgetting its saved sign-in
 claude-companion alias <who> <name>, disable <who>, enable <who>, move <who> <number>
-claude-companion config         --exclude <account-id>, --auto-join off, …
+claude-companion chats list     every chat of every account (--account, --json)
+claude-companion chats lost     conversations on disk that no account shows
+claude-companion chats rescue   give lost chats a card again (--to <account>)
+claude-companion chats copy     put chats into another account's list (--from, --to)
+claude-companion chats export   a chat as Markdown or a web page (--format md|html)
+claude-companion stats          tokens by model, day and folder, from local transcripts
+claude-companion groups         merge the sidebar groups of all accounts (--dry-run, --json)
+claude-companion config         --exclude <account-id>, --auto-join off, --groups on, …
 ```
 
 The first time a sync copies sessions into the account Claude has open, quit and reopen Claude
@@ -81,6 +107,8 @@ once: it only reads its session list at startup.
   afterwards; nothing is deleted without going to a trash folder for 30 days.
 - Writes are atomic, never follow symlinks, and never overwrite a file that appeared or changed
   since planning.
+- Sidebar groups touch Claude's Local Storage, so they wait until Claude is closed, copy the
+  database first, check what they wrote reads back, and put the copy back if it does not.
 
 ## Building from source
 

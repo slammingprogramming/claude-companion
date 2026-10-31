@@ -37,6 +37,13 @@ const RETRY_AFTER: Duration = Duration::from_secs(60 * 60);
 /// Something the user should hear about: the outcome of a task they started.
 pub enum StoreEvent {
     Done(Result<String, String>),
+    /// Something read for the user to look at: a title and Markdown.
+    Report(String, String),
+    /// Conversations no account shows were found; the window asks whether to give them cards.
+    LostFound {
+        count: usize,
+        preview: String,
+    },
 }
 
 /// A switch waiting for Claude to quit: how that goes, and the way to stop waiting.
@@ -44,6 +51,10 @@ pub enum StoreEvent {
 pub struct Waiting {
     quitting: AtomicU8,
     stop: AtomicBool,
+    /// Claude has been asked to quit and is still open.
+    asked: AtomicBool,
+    /// End Claude now (Windows keeps it running in the tray when its window closes).
+    force: AtomicBool,
 }
 
 impl Waiting {
@@ -54,6 +65,7 @@ impl Waiting {
     }
 
     fn set(&self, quitting: Quitting) {
+        self.asked.store(true, Ordering::Relaxed);
         let n = match quitting {
             Quitting::Asked => 0,
             Quitting::Confirming => 1,
@@ -290,7 +302,7 @@ impl Store {
     // ------------------------------------------------------------------ doing
 
     /// Run blocking work off the UI thread, then report and re-read.
-    fn run_task(
+    pub(crate) fn run_task(
         &mut self,
         busy: Busy,
         cx: &mut Context<Self>,
@@ -666,7 +678,12 @@ impl Store {
                     let waiting = waiting.clone();
                     async move {
                         let tell = |quitting: Quitting| waiting.set(quitting);
-                        let watch = Watch { progress: Some(&tell), stop: Some(&waiting.stop) };
+                        let watch = Watch {
+                            progress: Some(&tell),
+                            stop: Some(&waiting.stop),
+                            force_now: Some(&waiting.force),
+                            ..Watch::default()
+                        };
                         match &target {
                             Some(account) => accounts::switch(&ctx, account, &watch),
                             None => accounts::add(&ctx, &watch),
@@ -726,6 +743,19 @@ impl Store {
     /// How Claude's quit goes while a switch waits for it.
     pub fn quitting(&self) -> Option<Quitting> {
         self.waiting.as_ref().map(|w| w.quitting())
+    }
+
+    /// Claude is open and has been asked to quit.
+    pub fn quit_asked(&self) -> bool {
+        self.waiting.as_ref().is_some_and(|w| w.asked.load(Ordering::Relaxed))
+    }
+
+    /// End Claude instead of waiting for it to quit: its work in progress is lost.
+    pub fn force_quit(&mut self, cx: &mut Context<Self>) {
+        if let Some(waiting) = &self.waiting {
+            waiting.force.store(true, Ordering::Relaxed);
+            cx.notify();
+        }
     }
 
     /// Stop waiting for Claude to quit: the switch ends there, with nothing changed.

@@ -219,7 +219,7 @@ fn is_package_family(family: &str) -> bool {
 /// Claude Desktop's Store packages, `Claude_<hash>` and `AnthropicPBC.Claude_<hash>`, among
 /// every app's in `%LOCALAPPDATA%\Packages`.
 #[cfg(any(windows, test))]
-fn is_claude_package(family: &str) -> bool {
+pub(crate) fn is_claude_package(family: &str) -> bool {
     is_package_family(family)
         && family
             .split_once('_')

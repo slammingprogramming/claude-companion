@@ -123,6 +123,10 @@ pub enum NotReady {
 impl std::fmt::Display for NotReady {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
+            NotReady::StillOpen if cfg!(windows) => {
+                "Claude did not quit, so nothing was changed. On Windows it keeps running in the tray when \
+                 its window closes: quit it from the tray icon, or ask for a forced quit (--force)"
+            }
             NotReady::StillOpen => "Claude did not quit, so nothing was changed",
             NotReady::Updating => "Claude is updating; try again in a minute",
             NotReady::Stopped => "stopped waiting for Claude to quit, so nothing was changed",
@@ -148,6 +152,11 @@ pub enum Quitting {
 pub struct Watch<'a> {
     pub progress: Option<&'a (dyn Fn(Quitting) + Sync)>,
     pub stop: Option<&'a AtomicBool>,
+    /// End Claude when it has not quit after being asked. Windows keeps Claude running in the
+    /// tray when its window closes, so there nothing quits it from outside but this.
+    pub force: bool,
+    /// Like `force`, but decided while waiting: set to end Claude now.
+    pub force_now: Option<&'a AtomicBool>,
 }
 
 impl Watch<'_> {
@@ -159,6 +168,10 @@ impl Watch<'_> {
 
     fn stopped(&self) -> bool {
         self.stop.is_some_and(|s| s.load(Ordering::Relaxed))
+    }
+
+    fn forced_now(&self) -> bool {
+        self.force_now.is_some_and(|s| s.load(Ordering::Relaxed))
     }
 }
 
@@ -176,8 +189,22 @@ pub fn quit(ctx: &Ctx, timeout: Duration, watch: &Watch) -> anyhow::Result<()> {
     }
     let mut log = QuitLog::start(&ctx.paths.desktop_logs.join("main.log"));
     process::ask_to_quit();
-    wait_for_quit(process::any_running, &mut log, (timeout, CONFIRM_TIMEOUT), watch)
+    // Where no request can quit Claude, a forced quit need not wait for one to be ignored.
+    let force = watch.force || watch.forced_now();
+    let patience = if force && cfg!(windows) { timeout.min(FORCE_AFTER) } else { timeout };
+    let result = wait_for_quit(process::any_running, &mut log, (patience, CONFIRM_TIMEOUT), watch);
+    let unanswered = result.as_ref().err().and_then(|e| e.downcast_ref::<NotReady>()) == Some(&NotReady::StillOpen);
+    if force && unanswered {
+        process::force_quit();
+        return wait_for_quit(process::any_running, &mut log, (FORCE_WAIT, FORCE_WAIT), &Watch::default());
+    }
+    result
 }
+
+/// How long a forced quit waits for a quit request on Windows, which ignores them, and then for
+/// the processes it ended to be gone.
+const FORCE_AFTER: Duration = Duration::from_secs(5);
+const FORCE_WAIT: Duration = Duration::from_secs(10);
 
 /// Wait while `running`, following the quit in `log`: `limits` is how long Claude may say nothing,
 /// then how long it may keep its question open.
@@ -202,6 +229,9 @@ fn wait_for_quit(
         }
         if watch.stopped() {
             return Err(NotReady::Stopped.into());
+        }
+        if watch.forced_now() {
+            return Err(NotReady::StillOpen.into());
         }
         if deadline.is_some_and(|d| Instant::now() >= d) {
             return Err(NotReady::StillOpen.into());
@@ -281,7 +311,7 @@ pub fn launch(ctx: &Ctx) -> anyhow::Result<()> {
     if ctx.fake.running.is_some() {
         return Ok(());
     }
-    process::launch()
+    process::launch(&ctx.paths.user_data)
 }
 
 pub fn last_known_account(ctx: &Ctx) -> Option<String> {
@@ -486,8 +516,16 @@ mod process {
         }
     }
 
+    /// SIGKILL: only when asking did not work and the person chose to force it.
     #[cfg(target_os = "macos")]
-    pub fn launch() -> anyhow::Result<()> {
+    pub fn force_quit() {
+        for pid in pids(|p| contains(p, BUNDLE) && !p.ends_with(UPDATER)).unwrap_or_default() {
+            unsafe { libc::kill(pid, libc::SIGKILL) };
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn launch(_user_data: &std::path::Path) -> anyhow::Result<()> {
         use anyhow::Context as _;
         let status = std::process::Command::new("/usr/bin/open")
             .args(["-b", "com.anthropic.claudefordesktop"])
@@ -508,40 +546,107 @@ mod process {
         false
     }
 
-    #[cfg(not(target_os = "macos"))]
-    pub fn ask_to_quit() {}
+    /// The processes of `procs` (pid, parent pid) whose parent is not one of them either: the
+    /// app itself, as opposed to the helpers it started.
+    #[cfg(any(target_os = "linux", windows, test))]
+    pub(super) fn main_ones<T: Copy + PartialEq>(procs: &[(T, T)]) -> Vec<T> {
+        procs.iter().filter(|(_, parent)| !procs.iter().any(|(pid, _)| pid == parent)).map(|(pid, _)| *pid).collect()
+    }
 
-    #[cfg(not(target_os = "macos"))]
-    pub fn launch() -> anyhow::Result<()> {
-        anyhow::bail!("starting Claude is not supported on this system yet")
+    // ---------------------------------------------------------------------------------- Linux
+
+    /// Claude Desktop's processes as (pid, parent pid). Linux builds are unofficial (e.g.
+    /// claude-desktop-debian): an Electron process whose executable or command line names
+    /// claude-desktop. The Claude Code CLI ("claude") is deliberately not matched.
+    #[cfg(target_os = "linux")]
+    fn processes() -> Option<Vec<(i32, i32)>> {
+        let entries = std::fs::read_dir("/proc").ok()?;
+        let mut found = Vec::new();
+        for e in entries.flatten() {
+            let name = e.file_name();
+            let Some(pid) = name.to_str().filter(|s| s.bytes().all(|b| b.is_ascii_digit())) else { continue };
+            let Ok(num) = pid.parse::<i32>() else { continue };
+            let comm = std::fs::read_to_string(format!("/proc/{pid}/comm")).unwrap_or_default();
+            let comm = comm.trim();
+            let mut is_claude = comm == "claude-desktop" || comm == "Claude";
+            if !is_claude && (comm == "electron" || comm.starts_with("claude")) {
+                let cmd = std::fs::read(format!("/proc/{pid}/cmdline")).unwrap_or_default();
+                is_claude = String::from_utf8_lossy(&cmd).contains("claude-desktop");
+            }
+            if is_claude {
+                // /proc/<pid>/stat: `pid (comm) state ppid …`; comm may hold spaces and parentheses.
+                let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).unwrap_or_default();
+                let parent = stat
+                    .rfind(')')
+                    .and_then(|at| stat[at + 1..].split_whitespace().nth(1))
+                    .and_then(|p| p.parse().ok())
+                    .unwrap_or(0);
+                found.push((num, parent));
+            }
+        }
+        Some(found)
     }
 
     #[cfg(target_os = "linux")]
     pub fn desktop_running() -> Option<bool> {
-        // Linux builds are unofficial (e.g. claude-desktop-debian): an Electron process whose
-        // executable or command line names claude-desktop. The Claude Code CLI ("claude") is
-        // deliberately not matched.
-        let entries = std::fs::read_dir("/proc").ok()?;
-        for e in entries.flatten() {
-            let name = e.file_name();
-            let Some(pid) = name.to_str().filter(|s| s.bytes().all(|b| b.is_ascii_digit())) else { continue };
-            let comm = std::fs::read_to_string(format!("/proc/{pid}/comm")).unwrap_or_default();
-            let comm = comm.trim();
-            if comm == "claude-desktop" || comm == "Claude" {
-                return Some(true);
-            }
-            if comm == "electron" || comm.starts_with("claude") {
-                let cmd = std::fs::read(format!("/proc/{pid}/cmdline")).unwrap_or_default();
-                if String::from_utf8_lossy(&cmd).contains("claude-desktop") {
-                    return Some(true);
-                }
-            }
-        }
-        Some(false)
+        processes().map(|found| !found.is_empty())
     }
 
+    /// SIGTERM to the app, as closing it from its menu would end: Electron quits cleanly.
+    #[cfg(target_os = "linux")]
+    pub fn ask_to_quit() {
+        for pid in main_ones(&processes().unwrap_or_default()) {
+            unsafe { libc::kill(pid, libc::SIGTERM) };
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn force_quit() {
+        for (pid, _) in processes().unwrap_or_default() {
+            unsafe { libc::kill(pid, libc::SIGKILL) };
+        }
+    }
+
+    /// Where to look for Claude's launcher: the unofficial packages install `claude-desktop`.
+    #[cfg(target_os = "linux")]
+    pub fn launch(_user_data: &std::path::Path) -> anyhow::Result<()> {
+        use anyhow::Context as _;
+        use std::os::unix::process::CommandExt as _;
+        use std::process::{Command, Stdio};
+
+        let mut dirs: Vec<std::path::PathBuf> =
+            std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect()).unwrap_or_default();
+        dirs.extend(["/usr/bin", "/usr/local/bin", "/opt/Claude"].map(std::path::PathBuf::from));
+        dirs.push(crate::paths::home().join(".local").join("bin"));
+        let exe = ["claude-desktop", "claude-desktop-unofficial"]
+            .iter()
+            .flat_map(|name| dirs.iter().map(move |d| d.join(name)))
+            .find(|p| p.is_file())
+            .context("could not find Claude Desktop to start (looked for claude-desktop on your PATH)")?;
+        // Its own process group, so it outlives this program and its terminal.
+        Command::new(&exe)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .process_group(0)
+            .spawn()
+            .with_context(|| format!("starting {}", exe.display()))?;
+        Ok(())
+    }
+
+    // -------------------------------------------------------------------------------- Windows
+
+    /// Whether `path` (lower case, backslashes) is the Claude Desktop program rather than the
+    /// Claude Code CLI, which is also called claude.exe. Desktop lives in
+    /// `...\AnthropicClaude\app-<version>\` (the installer's build) or in a Store package.
+    #[cfg(any(windows, test))]
+    pub(super) fn is_desktop_exe(path: &str) -> bool {
+        path.contains("anthropicclaude") || path.contains("\\windowsapps\\claude") || path.contains("\\app-")
+    }
+
+    /// Claude Desktop's processes as (pid, parent pid).
     #[cfg(windows)]
-    pub fn desktop_running() -> Option<bool> {
+    fn processes() -> Option<Vec<(u32, u32)>> {
         use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
         use windows_sys::Win32::System::Diagnostics::ToolHelp::{
             CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
@@ -557,7 +662,7 @@ mod process {
             }
             let mut entry: PROCESSENTRY32W = std::mem::zeroed();
             entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
-            let mut found = false;
+            let mut found = Vec::new();
             let mut ok = Process32FirstW(snap, &mut entry) != 0;
             while ok {
                 let len = entry.szExeFile.iter().position(|c| *c == 0).unwrap_or(entry.szExeFile.len());
@@ -569,20 +674,12 @@ mod process {
                         let mut size = buf.len() as u32;
                         if QueryFullProcessImageNameW(handle, 0, buf.as_mut_ptr(), &mut size) != 0 {
                             let path = String::from_utf16_lossy(&buf[..size as usize]).to_lowercase();
-                            // Desktop lives in ...\AnthropicClaude\app-<version>\ or a Store
-                            // package; the Claude Code CLI (also claude.exe) does not.
-                            if path.contains("anthropicclaude")
-                                || path.contains("\\windowsapps\\claude")
-                                || path.contains("\\app-")
-                            {
-                                found = true;
+                            if is_desktop_exe(&path) {
+                                found.push((entry.th32ProcessID, entry.th32ParentProcessID));
                             }
                         }
                         CloseHandle(handle);
                     }
-                }
-                if found {
-                    break;
                 }
                 ok = Process32NextW(snap, &mut entry) != 0;
             }
@@ -591,15 +688,171 @@ mod process {
         }
     }
 
+    #[cfg(windows)]
+    pub fn desktop_running() -> Option<bool> {
+        processes().map(|found| !found.is_empty())
+    }
+
+    /// Closing Claude's window leaves it running in the tray, and nothing from outside quits it
+    /// the way the tray's Quit does: the person quits it there, or forces it (see [`force_quit`]).
+    #[cfg(windows)]
+    pub fn ask_to_quit() {}
+
+    /// End Claude: the app first, so it cannot start the helpers that are ended after it.
+    #[cfg(windows)]
+    pub fn force_quit() {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
+
+        let procs = processes().unwrap_or_default();
+        let main = main_ones(&procs);
+        let order = main.iter().copied().chain(procs.iter().map(|(pid, _)| *pid).filter(|pid| !main.contains(pid)));
+        for pid in order {
+            unsafe {
+                let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
+                if !handle.is_null() {
+                    TerminateProcess(handle, 1);
+                    CloseHandle(handle);
+                }
+            }
+        }
+    }
+
+    /// What starts Claude Desktop on Windows.
+    #[cfg(any(windows, test))]
+    #[derive(Debug, PartialEq, Eq)]
+    pub(super) enum WinLaunch {
+        /// A Store package, opened through the shell: `<package family>!Claude`.
+        Store(String),
+        Exe(std::path::PathBuf),
+    }
+
+    /// The Store package's application id, from the packages in `%LOCALAPPDATA%\Packages`.
+    #[cfg(any(windows, test))]
+    fn store_app_id(local: &std::path::Path) -> Option<String> {
+        let mut families: Vec<String> = std::fs::read_dir(local.join("Packages"))
+            .ok()?
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|name| crate::paths::is_claude_package(name))
+            .collect();
+        families.sort();
+        families.into_iter().next().map(|family| format!("{family}!Claude"))
+    }
+
+    /// Which Claude to start: the build whose data folder is in use, so a Store build and an
+    /// installer build side by side each open on their own sign-in.
+    #[cfg(any(windows, test))]
+    pub(super) fn windows_launch_target(local: &std::path::Path, user_data: &std::path::Path) -> Option<WinLaunch> {
+        let installer = local.join("AnthropicClaude").join("claude.exe");
+        let data = user_data.to_string_lossy().to_lowercase().replace('/', "\\");
+        let store_data = data.contains("\\packages\\") || data.contains("\\claude-data\\");
+        let store = store_app_id(local);
+        match (store, installer.is_file(), store_data) {
+            (Some(id), _, true) => Some(WinLaunch::Store(id)),
+            (_, true, _) => Some(WinLaunch::Exe(installer)),
+            (Some(id), false, false) => Some(WinLaunch::Store(id)),
+            (None, false, _) => None,
+        }
+    }
+
+    #[cfg(windows)]
+    pub fn launch(user_data: &std::path::Path) -> anyhow::Result<()> {
+        use anyhow::Context as _;
+        use std::os::windows::process::CommandExt as _;
+        use std::process::{Command, Stdio};
+
+        let local = dirs::data_local_dir().context("finding the local application data folder")?;
+        let target = windows_launch_target(&local, user_data).context("could not find Claude Desktop to start")?;
+        let (program, args) = match target {
+            WinLaunch::Store(id) => (std::path::PathBuf::from("explorer.exe"), vec![format!("shell:AppsFolder\\{id}")]),
+            WinLaunch::Exe(exe) => (exe, Vec::new()),
+        };
+        // No console, its own process group, and out of the job this program may run in (when
+        // that allows it), so Claude keeps running after this program exits.
+        const DETACHED: u32 = 0x0000_0008 | 0x0000_0200;
+        const BREAKAWAY: u32 = 0x0100_0000;
+        let mut failure = None;
+        for flags in [DETACHED | BREAKAWAY, DETACHED] {
+            let started = Command::new(&program)
+                .args(&args)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .creation_flags(flags)
+                .spawn();
+            match started {
+                Ok(_) => return Ok(()),
+                Err(e) => failure = Some(e),
+            }
+        }
+        Err(failure.expect("two attempts were made")).context("starting Claude")
+    }
+
+    // ------------------------------------------------------------------------------- the rest
+
     #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
     pub fn desktop_running() -> Option<bool> {
         None
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+    pub fn ask_to_quit() {}
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+    pub fn force_quit() {}
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+    pub fn launch(_user_data: &std::path::Path) -> anyhow::Result<()> {
+        anyhow::bail!("starting Claude is not supported on this system")
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_app_is_asked_to_quit_not_its_helpers() {
+        // 10 is the app; 11 and 12 are its helpers; 20 belongs to an unrelated chain.
+        assert_eq!(process::main_ones(&[(10, 1), (11, 10), (12, 11)]), [10]);
+        assert_eq!(process::main_ones(&[(10, 1), (20, 1), (21, 20)]), [10, 20]);
+        assert!(process::main_ones::<i32>(&[]).is_empty());
+    }
+
+    #[test]
+    fn the_claude_code_cli_is_not_claude_desktop_on_windows() {
+        assert!(process::is_desktop_exe(r"c:\users\a\appdata\local\anthropicclaude\app-1.2.3\claude.exe"));
+        assert!(process::is_desktop_exe(
+            r"c:\program files\windowsapps\claude_1.0.0.0_x64__pzs8sxrjxfjjc\app\claude.exe"
+        ));
+        assert!(!process::is_desktop_exe(r"c:\users\a\.local\bin\claude.exe"));
+        assert!(!process::is_desktop_exe(r"c:\users\a\appdata\roaming\npm\claude.exe"));
+    }
+
+    #[test]
+    fn windows_starts_the_build_whose_data_is_in_use() {
+        use process::{windows_launch_target as target, WinLaunch};
+        let tmp = tempfile::tempdir().unwrap();
+        let local = tmp.path();
+        let data = |sub: &str| local.join(sub);
+        assert_eq!(target(local, &data("Claude")), None, "nothing installed");
+
+        fs::create_dir_all(local.join("Packages/Claude_pzs8sxrjxfjjc")).unwrap();
+        fs::create_dir_all(local.join("Packages/Microsoft.WindowsStore_8wekyb3d8bbwe")).unwrap();
+        let store = Some(WinLaunch::Store("Claude_pzs8sxrjxfjjc!Claude".into()));
+        assert_eq!(target(local, &data("Claude-Data/claude_pzs8sxrjxfjjc")), store);
+        assert_eq!(target(local, &data("Packages/Claude_pzs8sxrjxfjjc/LocalCache/Roaming/Claude")), store);
+        // Nothing else to start, whichever data folder.
+        assert_eq!(target(local, &data("Roaming/Claude")), store);
+
+        // Both installed: the data folder decides.
+        let installer = local.join("AnthropicClaude/claude.exe");
+        fs::create_dir_all(installer.parent().unwrap()).unwrap();
+        fs::write(&installer, "").unwrap();
+        assert_eq!(target(local, &data("Claude-Data/claude_pzs8sxrjxfjjc")), store);
+        assert_eq!(target(local, &data("Roaming/Claude")), Some(WinLaunch::Exe(installer)));
+    }
 
     #[test]
     fn claude_asking_and_waiting_shows_in_its_log() {
@@ -648,7 +901,7 @@ mod tests {
         ) -> (Vec<Quitting>, Result<(), NotReady>) {
             let heard = std::sync::Mutex::new(Vec::new());
             let tell = |q: Quitting| heard.lock().unwrap().push(q);
-            let watch = Watch { progress: Some(&tell), stop: Some(stop) };
+            let watch = Watch { progress: Some(&tell), stop: Some(stop), ..Watch::default() };
             let running = self.running.clone();
             let limits = (Duration::from_millis(limits.0), Duration::from_millis(limits.1));
             let result = wait_for_quit(|| running.load(Ordering::Relaxed), &mut log, limits, &watch)

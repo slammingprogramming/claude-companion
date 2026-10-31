@@ -30,7 +30,7 @@ must travel with the code. Those notices are reproduced, unmodified, in [`LICENS
 | Project | Author | License | What Claude Companion takes from it |
 | --- | --- | --- | --- |
 | [cc-same](https://github.com/songkeys/cc-same) | Songkeys | MIT, [`LICENSES/MIT-cc-same.txt`](LICENSES/MIT-cc-same.txt) | **The base of this fork**: the sync engine, snapshots and trash, background service, command-line tool, desktop app, translations, account list and (on macOS) account switching. Fork point: upstream commit `3d5183b` (v0.1.12). Full upstream history is kept in this repository's git log. |
-| [claude-desktop-session-sync](https://github.com/RasmusKD/claude-desktop-session-sync) | RasmusKD | MIT, [`LICENSES/MIT-claude-desktop-session-sync.txt`](LICENSES/MIT-claude-desktop-session-sync.txt) | Knowledge of where Claude Desktop keeps its chat list, sidebar groups and scheduled tasks, and the design of safe three-way merging of groups and scheduled tasks, deletion stashing, account freezing, and backups. Studied at commit `5462c83`. |
+| [claude-desktop-session-sync](https://github.com/RasmusKD/claude-desktop-session-sync) | RasmusKD | MIT, [`LICENSES/MIT-claude-desktop-session-sync.txt`](LICENSES/MIT-claude-desktop-session-sync.txt) | Knowledge of where Claude Desktop keeps its chat list, sidebar groups and scheduled tasks, and the design of safe three-way merging of groups and scheduled tasks, deletion stashing, account freezing, and backups. **`crates/core/src/groups.rs` is a Rust port of its sidebar-group merge** (`group-sync.mjs`): the Chromium Local Storage encoding, the three-way merge with tombstones and the pending-push marker, and the config-file splice. Studied at commit `5462c83`. |
 | [claude-switcher](https://github.com/nyxon-tech/claude-switcher) | NeezerGu and Nyxon | MIT, [`LICENSES/MIT-claude-switcher.txt`](LICENSES/MIT-claude-switcher.txt) | The cross-platform approach to switching Claude Desktop logins, copying, moving and merging chats between accounts, recovering "lost" chats, journaled undo, usage statistics from local transcripts, a doctor check, and Markdown/web-page export. Studied at commit `53b7e53`. |
 | [claude-profile-switcher](https://github.com/NeezerGu/claude-profile-switcher) | NeezerGu | MIT | The origin of claude-switcher, which worked out which of Claude Desktop's files make up a login and how to swap them safely. Credited by claude-switcher, and credited here for the same reason. |
 
@@ -50,8 +50,11 @@ Claude Companion's desktop app is built with [GPUI](https://github.com/zed-indus
 (Zed Industries, Apache-2.0) and Longbridge's [GPUI Kit](https://github.com/longbridge/gpui-kit),
 and the engine and command-line tool with the Rust crates listed in `Cargo.lock`
 (`Cargo.toml` of each crate names them). Each remains under its own license; all of them are
-compatible with distribution inside an AGPL-3.0-or-later work. A generated list of the exact
-dependency licenses is kept in [`THIRD_PARTY.md`](THIRD_PARTY.md) when the project is released.
+compatible with distribution inside an AGPL-3.0-or-later work. The sidebar-group sync reads and writes Claude's Local Storage with
+[rusty-leveldb](https://github.com/dermesser/leveldb-rs) (Lewin Bormann, MIT), a Rust port of
+LevelDB. A generated list of the exact
+dependency licenses is in [`THIRD_PARTY.md`](THIRD_PARTY.md); each crate's own copyright notice
+and license text travel with its source on crates.io.
 
 ## Artwork
 

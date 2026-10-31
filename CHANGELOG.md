@@ -8,6 +8,58 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
 
 ## 0.2.0 - 2026-10-30
 
+### Added
+
+- **Switching accounts on Windows and Linux**, as on macOS: `claude-companion switch`, `add`,
+  and the app's account list now work there too. The sign-in files are moved as they are, never
+  read or decrypted. Windows also keeps the sign-in's cookies in `Network`, which is handled, and
+  Claude is started again from its Store package or its installer build, whichever holds the
+  data in use. How Claude's sign-in is laid out on Windows and Linux follows the research in
+  [claude-switcher](https://github.com/nyxon-tech/claude-switcher) by NeezerGu and Nyxon.
+- **Quitting Claude on Windows.** Windows keeps Claude running in the tray when its window
+  closes, and nothing from outside quits it politely. The app says so and offers **End Claude**;
+  on the command line, `switch --force` and `add --force` do the same after a few seconds.
+  Linux sends the quit request (SIGTERM) to the app, as macOS does.
+
+- **Lost chats, copying and export** (`claude-companion chats …`), after
+  [claude-switcher](https://github.com/nyxon-tech/claude-switcher):
+  - `chats list` shows every chat of every account; `chats lost` finds conversations whose
+    history is on disk but that no account's list shows, and `chats rescue --to <account>` gives
+    them a card again so Claude shows them (your other accounts get them through sync).
+  - `chats copy --from <a> --to <b>` puts one chat, or all of them, into another account's list
+    (the newer card wins, deleted chats stay deleted): for accounts you keep out of sync.
+    There is no *move*: a deleted card travels to every account that syncs, so a move would
+    delete the chat everywhere.
+  - `chats export <id> [--format md|html]` writes a chat as Markdown or a self-contained page.
+  - Every write goes through the same engine as sync: never into a list Claude has open, only
+    after a snapshot (`restore <id>` undoes it), and never over a newer card.
+- **Token statistics** (`claude-companion stats`): tokens by model, day and folder, counted once
+  per reply from Claude Code's local transcripts. Nothing is sent anywhere.
+
+- **The same in the app.** Settings has a new **Tools** group: *Lost chats* (find them, then
+  rescue them after a confirmation), *Export a chat* (Markdown or a web page, into Downloads),
+  *Token statistics*, *Diagnostics* (what `doctor` prints) and how long Claude Code keeps other
+  transcripts (`retention <days>`). The account list has arrows to reorder accounts (`move`).
+  With these, nothing the command line does is missing from the app, and the command line has
+  `doctor` and `plan` for what the window shows as its headline. The app's new rows were checked by
+  building, linting and unit tests, not yet by eye on every system.
+
+- **One set of sidebar groups for every account** (`claude-companion groups`, off until you turn
+  it on with `config --groups on` or Settings › Sync; Settings › Tools has *Preview* and *Merge
+  now*). Claude keeps each account's custom groups in its Local Storage; this merges them three
+  ways against the last result, so a group made, renamed, reordered or deleted in one account
+  reaches the others, and a deleted group does not come back. Ported from the group merge in
+  [claude-desktop-session-sync](https://github.com/RasmusKD/claude-desktop-session-sync) by
+  RasmusKD, which also taught the order of things: groups live on claude.ai for each account, so
+  the merge marks the account Claude starts on as the one to push, and the others pick the groups
+  up when you switch. Only while Claude is closed; Local Storage and Claude's config file are
+  backed up first, and the write is checked and rolled back if it does not read back. Tested
+  against stand-in databases, not yet against a real Claude profile.
+
+> Switching on Windows and Linux is tested against stand-in data and compiles on all three
+> systems, but it has not yet been run against a real Claude Desktop there. Treat it as a
+> first release of that feature, and report what you find.
+
 ### Changed
 
 - **Claude Companion.** This is a hard fork of cc-same 0.1.12, renamed to Claude Companion. The

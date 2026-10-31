@@ -9,13 +9,14 @@ use crate::i18n::{self, t, tf, tn};
 use crate::model;
 use crate::store::{Store, UpdatePhase};
 use crate::theme::ThemeChoice;
+use crate::tools;
 use crate::update;
 use crate::view::{UniApp, open_notes};
 use claude_companion_core::config::Config;
 use claude_companion_core::report::Warning;
 use claude_companion_core::retention::Limit;
 use gpui_kit::component::avatar::Avatar;
-use gpui_kit::component::button::{Button, ButtonGroup};
+use gpui_kit::component::button::{Button, ButtonGroup, ButtonVariants as _};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::switch::Switch;
@@ -125,6 +126,12 @@ fn body(store: &Entity<Store>, cx: &mut App) -> impl IntoElement {
             toggle(store, "auto-join", cfg.auto_join_new, idle, |c, on| c.auto_join_new = on),
             cx,
         ),
+        row(
+            t("settings.groups"),
+            Some(t("settings.groups.detail")),
+            toggle(store, "sync-groups", cfg.sync_groups, idle, |c, on| c.sync_groups = on),
+            cx,
+        ),
     ];
 
     let people: Vec<AnyElement> = if accounts.is_empty() {
@@ -135,12 +142,43 @@ fn body(store: &Entity<Store>, cx: &mut App) -> impl IntoElement {
             .map(|a| {
                 let id = a.id.clone();
                 let included = !a.excluded;
+                let number = a.number;
+                let last = accounts.iter().filter_map(|o| o.number).max().unwrap_or(0);
+                let mover = |dir: &'static str, icon: IconName, to: Option<u32>, tip: String| {
+                    let (store, id) = (store.clone(), a.id.clone());
+                    Button::new(SharedString::from(format!("{dir}-{}", a.id)))
+                        .ghost()
+                        .xsmall()
+                        .icon(icon)
+                        .tooltip(tip)
+                        .disabled(!idle || to.is_none())
+                        .on_click(move |_, _, cx| {
+                            if let Some(n) = to {
+                                let id = id.clone();
+                                store.update(cx, |s, cx| s.move_account(id, n, cx));
+                            }
+                        })
+                };
                 h_flex()
                     .gap_3()
                     .px_3()
                     .py_2()
                     .child(Avatar::new().name(a.initials()).xsmall())
                     .child(div().flex_1().min_w_0().truncate().child(a.name.clone()))
+                    .when(number.is_some(), |row| {
+                        let n = number.unwrap_or(0);
+                        row.child(
+                            h_flex()
+                                .gap_0p5()
+                                .child(mover("up", IconName::ArrowUp, (n > 1).then(|| n - 1), t("account.move_up")))
+                                .child(mover(
+                                    "down",
+                                    IconName::ArrowDown,
+                                    (n < last).then(|| n + 1),
+                                    t("account.move_down"),
+                                )),
+                        )
+                    })
                     .child(
                         Switch::new(SharedString::from(format!("include-{}", a.id)))
                             .small()
@@ -212,6 +250,8 @@ fn body(store: &Entity<Store>, cx: &mut App) -> impl IntoElement {
     if let Some(n) = missing.filter(|n| *n > 0) {
         transcripts.push(note(tn("settings.missing", n, &[]), cx));
     }
+
+    let tools = tools::rows(store, idle, cx, row);
 
     let mut restore: Vec<AnyElement> = Vec::new();
     if running && !snapshots.is_empty() {
@@ -337,6 +377,7 @@ fn body(store: &Entity<Store>, cx: &mut App) -> impl IntoElement {
         .child(group(t("settings.sync"), sync, cx))
         .child(group(t("accounts.title"), people, cx))
         .child(group(t("settings.transcripts"), transcripts, cx))
+        .child(group(t("tools.title"), tools, cx))
         .child(group(t("settings.snapshots"), restore, cx))
         .child(group(t("settings.files"), files, cx))
         .child(group(t("settings.updates"), updating, cx))

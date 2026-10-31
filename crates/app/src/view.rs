@@ -62,9 +62,10 @@ impl UniApp {
         let subscriptions = vec![
             cx.observe_window_appearance(window, |_, _, cx| cx.notify()),
             cx.observe(&store, |_, _, cx| cx.notify()),
-            cx.subscribe_in(&store, window, |_, _, event: &StoreEvent, window, cx| {
-                let StoreEvent::Done(result) = event;
-                show_outcome(result, window, cx);
+            cx.subscribe_in(&store, window, |this, _, event: &StoreEvent, window, cx| match event {
+                StoreEvent::Done(result) => show_outcome(result, window, cx),
+                StoreEvent::Report(title, body) => open_notes(title.clone(), body.clone(), window, cx),
+                StoreEvent::LostFound { count, preview } => this.confirm_rescue(*count, preview.clone(), window, cx),
             }),
         ];
         let focus = cx.focus_handle();
@@ -107,6 +108,29 @@ impl UniApp {
                 .on_ok(move |_, _, cx| {
                     let id = id.clone();
                     store.update(cx, |store, cx| store.restore(id, cx));
+                    true
+                })
+        });
+    }
+
+    /// Lost chats were found: say which, and give them cards on a yes.
+    fn confirm_rescue(&mut self, count: usize, preview: String, window: &mut Window, cx: &mut Context<Self>) {
+        let store = self.store.clone();
+        window.open_alert_dialog(cx, move |alert, _, _| {
+            let store = store.clone();
+            alert
+                .title(tn("rescue.title", count, &[]))
+                .description(format!(
+                    "{}
+
+{preview}",
+                    t("rescue.body")
+                ))
+                .confirm()
+                .ok_text(t("rescue.ok"))
+                .cancel_text(t("dialog.cancel"))
+                .on_ok(move |_, _, cx| {
+                    store.update(cx, |store, cx| store.rescue_lost(cx));
                     true
                 })
         });
@@ -797,10 +821,27 @@ impl UniApp {
     /// Claude is asking before it quits for a switch, restarting on its sign-in page, or waiting
     /// there for the user to sign in.
     fn render_sign_in_notice(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
-        let (busy, switching_to, signing_in, quitting) = {
+        let (busy, switching_to, signing_in, quitting, quit_asked) = {
             let store = self.store.read(cx);
-            (store.busy, store.switching_to.clone(), store.signing_in.clone(), store.quitting())
+            (store.busy, store.switching_to.clone(), store.signing_in.clone(), store.quitting(), store.quit_asked())
         };
+        // Windows keeps Claude running in the tray when its window closes, and nothing quits it
+        // from outside: the user quits it there, or has it ended here.
+        if cfg!(windows) && quit_asked && quitting == Some(Quitting::Asked) {
+            let force = Button::new("force-quit")
+                .small()
+                .outline()
+                .label(t("quit.force"))
+                .on_click(cx.listener(|this, _, _, cx| this.store.update(cx, |store, cx| store.force_quit(cx))))
+                .into_any_element();
+            let stop = Button::new("stop-waiting")
+                .small()
+                .outline()
+                .label(t("quit.stop"))
+                .on_click(cx.listener(|this, _, _, cx| this.store.update(cx, |store, cx| store.stop_waiting(cx))))
+                .into_any_element();
+            return Some(notice("notice-quitting", Tone::Warning, t("quit.from_tray"), vec![force, stop], None, cx));
+        }
         // Claude has work in progress: it asks whether to stop it, or waits for it. Either way the
         // user decides in Claude, and can stop waiting here (say after choosing Cancel there).
         if let Some(quitting @ (Quitting::Confirming | Quitting::AfterWork)) = quitting {

@@ -4,12 +4,16 @@
 // Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
 //! `claude-companion`: keep Claude Desktop's local sessions identical across all your accounts.
 
+mod chats_cmd;
+
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use claude_companion_core::accounts::{self, NotFound, Roster, Slot, Strategy};
 use claude_companion_core::desktop::{self, Quitting};
+use claude_companion_core::diagnose;
+use claude_companion_core::groups;
 use claude_companion_core::logins;
-use claude_companion_core::report::{self, Overview, Warning};
+use claude_companion_core::report;
 use claude_companion_core::retention::{self, Kept, Limit};
 use claude_companion_core::service::{self, Heartbeat};
 use claude_companion_core::usage::Usage;
@@ -40,6 +44,62 @@ struct Cli {
     verbose: bool,
     #[command(subcommand)]
     cmd: Option<Cmd>,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+pub enum ExportFormat {
+    /// Markdown
+    Md,
+    /// A self-contained web page
+    Html,
+}
+
+#[derive(Subcommand)]
+enum ChatsCmd {
+    /// Every chat in every account's list
+    List {
+        /// Only this account's (its number, alias, email or id)
+        #[arg(long)]
+        account: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Chats whose history is on disk but that no account shows
+    Lost {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Give lost chats a card again, so Claude shows them (quit Claude first)
+    Rescue {
+        /// Transcript ids (or their first characters); all lost chats without any
+        ids: Vec<String>,
+        /// The account whose list gets them
+        #[arg(long)]
+        to: String,
+        #[arg(short, long)]
+        yes: bool,
+    },
+    /// Put chats of one account into another's list; newer cards win (quit Claude first)
+    Copy {
+        /// Chat ids (or their first characters); every chat without any
+        ids: Vec<String>,
+        #[arg(long)]
+        from: String,
+        #[arg(long)]
+        to: String,
+        #[arg(short, long)]
+        yes: bool,
+    },
+    /// Write a chat as Markdown or a web page
+    Export {
+        /// The start of a chat's id (card or transcript)
+        chat: String,
+        #[arg(long, value_enum, default_value_t = ExportFormat::Md)]
+        format: ExportFormat,
+        /// Write to this file instead of the terminal
+        #[arg(short, long)]
+        out: Option<PathBuf>,
+    },
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -118,10 +178,17 @@ enum Cmd {
         strategy: Option<StrategyArg>,
         #[arg(long)]
         json: bool,
+        /// End Claude if it has not quit when asked (on Windows, nothing else quits it from outside)
+        #[arg(long)]
+        force: bool,
     },
     /// Restart Claude signed out, to add an account; the current one is kept
     #[command(alias = "sign-in")]
-    Add,
+    Add {
+        /// End Claude if it has not quit when asked (on Windows, nothing else quits it from outside)
+        #[arg(long)]
+        force: bool,
+    },
     /// Take an account off the list and forget the sign-in kept for it (its sessions stay)
     #[command(alias = "forget")]
     Remove {
@@ -146,6 +213,24 @@ enum Cmd {
     Enable { account: String },
     /// Give an account another number (the account that has it takes the old one)
     Move { account: String, number: u32 },
+    /// Chats across accounts: list, find lost ones, rescue, copy, export
+    Chats {
+        #[command(subcommand)]
+        cmd: ChatsCmd,
+    },
+    /// Tokens used by model, day and folder, counted from Claude Code's local transcripts
+    Stats {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Merge the sidebar groups of all accounts (Claude must be closed)
+    Groups {
+        /// Show what would change without touching anything
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(long)]
+        json: bool,
+    },
     /// Show or change settings
     Config {
         /// Keep an account (or `<account>/<org>`) separate
@@ -160,6 +245,9 @@ enum Cmd {
         /// Desktop notifications from the background agent
         #[arg(long)]
         notify: Option<OnOff>,
+        /// Keep the sidebar groups of all accounts the same (only while Claude is closed)
+        #[arg(long)]
+        groups: Option<OnOff>,
     },
 }
 
@@ -253,14 +341,25 @@ fn run(cli: Cli) -> Result<()> {
         }
         Cmd::Retention { days, keep, undo } => retention(&ctx, days, keep, undo),
         Cmd::Accounts { json } => accounts(&ctx, json),
-        Cmd::Switch { account, strategy, json } => switch(&ctx, account.as_deref(), strategy.map(Into::into), json),
-        Cmd::Add => add(&ctx),
+        Cmd::Switch { account, strategy, json, force } => {
+            switch(&ctx, account.as_deref(), strategy.map(Into::into), json, force)
+        }
+        Cmd::Add { force } => add(&ctx, force),
         Cmd::Remove { account, yes } => remove(&ctx, &account, yes),
         Cmd::Alias { account, name, unset } => alias(&ctx, account.as_deref(), name.as_deref(), unset),
         Cmd::Disable { account } => sit_out(&ctx, &account, true),
         Cmd::Enable { account } => sit_out(&ctx, &account, false),
         Cmd::Move { account, number } => move_account(&ctx, &account, number),
-        Cmd::Config { exclude, include, auto_join, notify } => {
+        Cmd::Chats { cmd } => match cmd {
+            ChatsCmd::List { account, json } => chats_cmd::list(&ctx, account.as_deref(), json),
+            ChatsCmd::Lost { json } => chats_cmd::lost(&ctx, json),
+            ChatsCmd::Rescue { ids, to, yes } => chats_cmd::rescue(&ctx, &ids, &to, yes),
+            ChatsCmd::Copy { ids, from, to, yes } => chats_cmd::copy(&ctx, &ids, &from, &to, yes),
+            ChatsCmd::Export { chat, format, out } => chats_cmd::export(&ctx, &chat, format, out),
+        },
+        Cmd::Stats { json } => chats_cmd::stats(&ctx, json),
+        Cmd::Groups { dry_run, json } => groups_cmd(&ctx, dry_run, json),
+        Cmd::Config { exclude, include, auto_join, notify, groups } => {
             let mut cfg = ctx.config();
             let before = cfg.clone();
             for id in exclude {
@@ -274,6 +373,9 @@ fn run(cli: Cli) -> Result<()> {
             }
             if let Some(v) = notify {
                 cfg.notify = matches!(v, OnOff::On);
+            }
+            if let Some(v) = groups {
+                cfg.sync_groups = matches!(v, OnOff::On);
             }
             if cfg != before {
                 cfg.save(&ctx.paths)?;
@@ -295,147 +397,9 @@ fn confirm(prompt: &str) -> bool {
     std::io::stdin().read_line(&mut line).is_ok() && matches!(line.trim().to_lowercase().as_str(), "y" | "yes")
 }
 
-fn email_or_id(ov: &Overview, acct: &str) -> String {
-    ov.labels.get(acct).cloned().unwrap_or_else(|| format!("account {}", short(acct)))
-}
-
-fn describe_plan(ov_plan: &report::PlanView, labels: &std::collections::BTreeMap<String, String>) -> Vec<String> {
-    let mut lines = Vec::new();
-    if ov_plan.total == 0 {
-        lines.push("Nothing to do: every linked account already has the same sessions.".to_string());
-    }
-    for (p, kinds) in &ov_plan.per_partition {
-        let who = labels.get(&p.acct).cloned().unwrap_or_else(|| p.label());
-        let what: Vec<String> = kinds.iter().map(|(k, n)| format!("{n} {k}")).collect();
-        lines.push(format!("  {:<6} {:<32} {}", p.surface.as_str(), who, what.join(", ")));
-    }
-    if !ov_plan.deferred.is_empty() {
-        lines.push("Waiting for Claude (it has these open; applied after you switch accounts or quit):".into());
-        for (key, n) in &ov_plan.deferred {
-            let acct = key.split('/').next().unwrap_or(key);
-            let who = labels.get(acct).cloned().unwrap_or_else(|| short(acct).to_string());
-            lines.push(format!("  {who}: {n} change(s)"));
-        }
-    }
-    for n in &ov_plan.notes {
-        lines.push(format!("note: {n}"));
-    }
-    lines
-}
-
 fn doctor(ctx: &Ctx) -> Result<()> {
-    let ov = report::overview(ctx);
-    println!("claude-companion {}", claude_companion_core::VERSION);
-    let desktop = match (&ov.desktop_version, ov.app.running) {
-        (Some(v), true) => format!("Claude {v}, running"),
-        (Some(v), false) => format!("Claude {v}, not running"),
-        (None, true) => "Claude is running".to_string(),
-        (None, false) => "Claude is not running".to_string(),
-    };
-    let open = ov.app.open_account.as_deref().map(|a| format!("; open account: {}", email_or_id(&ov, a)));
-    println!("{desktop}{}", open.unwrap_or_default());
-    println!("Background sync: {}", service_line(&ov));
-    for sv in &ov.surfaces {
-        println!();
-        println!("{} sessions ({})", sv.surface.title(), sv.surface.dir_name());
-        for pv in &sv.partitions {
-            let mut flags = Vec::new();
-            if ov.app.showing(&pv.part) {
-                flags.push("OPEN IN CLAUDE");
-            }
-            if pv.excluded {
-                flags.push("excluded");
-            }
-            if pv.part.is_link {
-                flags.push("SYMLINK");
-            }
-            let who = pv.email.clone().unwrap_or_default();
-            if let Some(err) = &pv.error {
-                println!("  {}  {:<30} {}  {err}", pv.part.label(), who, flags.join(" "));
-                continue;
-            }
-            let mut facts = vec![format!("{} sessions", pv.sessions)];
-            if pv.archived > 0 {
-                facts.push(format!("{} archived", pv.archived));
-            }
-            if pv.missing > 0 && !pv.excluded {
-                facts.push(format!("missing {}", pv.missing));
-            }
-            if pv.unreadable > 0 {
-                facts.push(format!("{} unreadable", pv.unreadable));
-            }
-            println!("  {}  {:<30} {}  {}", pv.part.label(), who, facts.join(" · "), flags.join(" "));
-            if ctx.verbose && !pv.unmanaged.is_empty() {
-                println!("      left untouched: {}", pv.unmanaged.join(", "));
-            }
-        }
-    }
-    let retention = match ov.retention.desktop_days {
-        Some(d) => format!("deleted after {d} days"),
-        None => "kept at any age".into(),
-    };
-    println!();
-    println!("Transcripts of Desktop sessions: {retention}");
-    if let Some(ls) = &ov.last_sync {
-        println!("Last sync: {} ({}), {} change(s), {} error(s)", report::ago(ls.at), ls.reason, ls.applied, ls.errors);
-    }
-    if let Some(hint) = ov.restart_hint() {
-        println!("\nQuit and reopen Claude to see {} session(s) copied into the account it has open.", hint.sessions);
-    }
-    if !ov.warnings.is_empty() {
-        println!();
-        for w in &ov.warnings {
-            // Several organizations is the normal case, so it reads as a tip, not a problem.
-            let mark = if matches!(w, Warning::SpansOrgs { .. }) { "·" } else { "!" };
-            println!("{mark} {}", warning_text(w));
-        }
-    }
-    println!("\nNot synced by design: sidebar groups and order (a server setting of each account), pins, Cowork tasks, claude.ai chats, projects and memory, cloud sessions, connectors and Remote Control links.");
-    println!("\nIf you sync now:");
-    for l in describe_plan(&ov.plan, &ov.labels) {
-        println!("{l}");
-    }
+    print!("{}", diagnose::doctor(ctx));
     Ok(())
-}
-
-fn service_line(ov: &Overview) -> String {
-    let beat = ov.heartbeat.as_ref().filter(|h| h.is_fresh());
-    match (ov.service.installed, beat) {
-        (true, Some(h)) => format!("on (agent v{}, last check {})", h.version, report::ago(h.heartbeat_at)),
-        (true, None) => format!("on ({})", ov.service.detail),
-        (false, _) if ov.service.legacy => {
-            "the original Python agent is still installed; `claude-companion install` replaces it".into()
-        }
-        (false, _) => "off (turn on with `claude-companion install`)".into(),
-    }
-}
-
-fn warning_text(w: &Warning) -> String {
-    match w {
-        Warning::SymlinkedFolders { surface, count } => format!(
-            "{count} {surface} session folder(s) are symlinks. Claude silently stops saving sessions there. Quit Claude, then run: claude-companion fix-symlinks"
-        ),
-        Warning::LeftoverFolders { dirs, .. } => format!("Leftover backup folders from other tools: {} (safe to archive by hand)", dirs.join(", ")),
-        Warning::SpansOrgs { orgs, .. } => format!(
-            "Your accounts span {orgs} organizations, and synced sessions appear in all of them. To keep one separate: claude-companion config --exclude <account-id>"
-        ),
-        Warning::ShortRetention { days, limited_by, path } => {
-            let why = match limited_by {
-                Limit::DesktopSetting => format!("desktopSessionCleanupPeriodDays in {}", path.display()),
-                Limit::Organization => "your organization's managed settings".into(),
-                Limit::OlderClaudeCode => "a Claude Code before 2.1.248; updating Claude keeps them at any age".into(),
-            };
-            let fix = match limited_by {
-                Limit::Organization => "",
-                _ => " Keep them: claude-companion retention --keep",
-            };
-            format!("Claude Code deletes the transcripts of Desktop sessions after {days} days ({why}), and a session opens empty without one.{fix}")
-        }
-        Warning::MissingTranscripts { missing, total } => {
-            format!("{missing} of {total} sessions no longer have a transcript on disk; they open empty or not at all")
-        }
-        Warning::DesktopDataMissing { path } => format!("Claude Desktop's data folder was not found at {}", path.display()),
-    }
 }
 
 fn show_plan(ctx: &Ctx, verbose: bool) -> Result<()> {
@@ -444,7 +408,7 @@ fn show_plan(ctx: &Ctx, verbose: bool) -> Result<()> {
         println!("Claude is running; changes to the account it has open wait until you switch accounts or quit.");
     }
     let labels = claude_companion_core::scan::account_labels(ctx);
-    for l in describe_plan(&report::summarize(&plan), &labels) {
+    for l in diagnose::describe_plan(&report::summarize(&plan), &labels) {
         println!("{l}");
     }
     if verbose {
@@ -459,7 +423,7 @@ fn show_plan(ctx: &Ctx, verbose: bool) -> Result<()> {
 fn sync(ctx: &Ctx, yes: bool) -> Result<()> {
     let (plan, _, _) = plan::build_plan(ctx, None, None);
     let labels = claude_companion_core::scan::account_labels(ctx);
-    for l in describe_plan(&report::summarize(&plan), &labels) {
+    for l in diagnose::describe_plan(&report::summarize(&plan), &labels) {
         println!("{l}");
     }
     if !plan.is_empty() && !yes && !confirm("Apply these changes?") {
@@ -478,8 +442,36 @@ fn sync(ctx: &Ctx, yes: bool) -> Result<()> {
     if !out.seeded_while_loaded.is_empty() {
         println!("Quit and reopen Claude to see the sessions copied into the account it has open.");
     }
+    if ctx.config().sync_groups {
+        groups_cmd(ctx, false, false)?;
+    }
     if !out.errors.is_empty() {
         bail!("{} change(s) failed; see above", out.errors.len());
+    }
+    Ok(())
+}
+
+/// `groups`: one set of sidebar groups for every account.
+fn groups_cmd(ctx: &Ctx, dry_run: bool, json: bool) -> Result<()> {
+    let report = groups::sync(ctx, dry_run)?;
+    if json {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+        return Ok(());
+    }
+    for w in &report.warnings {
+        println!("warning: {w}");
+    }
+    println!("{}", report.summary());
+    if let Some(dir) = &report.backup_dir {
+        println!("Backup of Claude's Local Storage before the change: {}", dir.display());
+    }
+    if report.status == groups::Status::Updated {
+        println!(
+            "Start Claude on the account you usually use: it pushes the merged groups to claude.ai, and the other accounts pick them up when you switch to them."
+        );
+    }
+    if !ctx.config().sync_groups {
+        println!("Background sync leaves groups alone until you turn it on: `claude-companion config --groups on`.");
     }
     Ok(())
 }
@@ -488,7 +480,7 @@ fn install(ctx: &Ctx, yes: bool) -> Result<()> {
     let (plan, _, _) = plan::build_plan(ctx, None, None);
     let labels = claude_companion_core::scan::account_labels(ctx);
     println!("First sync:");
-    for l in describe_plan(&report::summarize(&plan), &labels) {
+    for l in diagnose::describe_plan(&report::summarize(&plan), &labels) {
         println!("{l}");
     }
     if !yes && !confirm("Sync now and keep syncing in the background?") {
@@ -644,7 +636,7 @@ fn accounts(ctx: &Ctx, json: bool) -> Result<()> {
     Ok(())
 }
 
-fn switch(ctx: &Ctx, account: Option<&str>, strategy: Option<Strategy>, json: bool) -> Result<()> {
+fn switch(ctx: &Ctx, account: Option<&str>, strategy: Option<Strategy>, json: bool, force: bool) -> Result<()> {
     let roster = accounts::observe(ctx);
     let found = logins::list(ctx);
     let target = match account {
@@ -670,7 +662,7 @@ fn switch(ctx: &Ctx, account: Option<&str>, strategy: Option<Strategy>, json: bo
         }
         return Ok(());
     }
-    let done = accounts::switch(ctx, &target, &quit_watch())?;
+    let done = accounts::switch(ctx, &target, &quit_watch(force))?;
     if json {
         let out = serde_json::json!({
             "schemaVersion": 1, "switched": true, "from": done.from, "to": done.to, "launched": done.launched,
@@ -684,7 +676,7 @@ fn switch(ctx: &Ctx, account: Option<&str>, strategy: Option<Strategy>, json: bo
 }
 
 /// Claude asks before it quits when it has work in progress: say so, and what Ctrl-C does then.
-fn quit_watch() -> desktop::Watch<'static> {
+fn quit_watch(force: bool) -> desktop::Watch<'static> {
     fn tell(quitting: Quitting) {
         match quitting {
             Quitting::Asked => {}
@@ -696,11 +688,16 @@ fn quit_watch() -> desktop::Watch<'static> {
             ),
         }
     }
-    desktop::Watch { progress: Some(&tell), stop: None }
+    if cfg!(windows) && !force {
+        eprintln!(
+            "On Windows, quit Claude from its tray icon (closing its window leaves it running), or run this again with --force."
+        );
+    }
+    desktop::Watch { progress: Some(&tell), stop: None, force, force_now: None }
 }
 
-fn add(ctx: &Ctx) -> Result<()> {
-    let switched = accounts::add(ctx, &quit_watch())?;
+fn add(ctx: &Ctx, force: bool) -> Result<()> {
+    let switched = accounts::add(ctx, &quit_watch(force))?;
     let roster = Roster::load(&ctx.paths);
     if let Some(from) = &switched.from {
         let name = name_in(&roster, from);

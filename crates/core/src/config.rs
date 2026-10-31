@@ -33,6 +33,8 @@ pub struct Config {
     #[serde(deserialize_with = "de_number")]
     pub switch_grace_seconds: f64,
     pub notify: bool,
+    /// Keep the sidebar groups of all accounts the same (only while Claude is closed).
+    pub sync_groups: bool,
     /// Desktop app: `system`, `light` or `dark`.
     pub appearance: String,
     /// Desktop app: `system` or a language code such as `zh-CN`.
@@ -59,6 +61,7 @@ impl Default for Config {
             trash_days: 30.0,
             switch_grace_seconds: 30.0,
             notify: true,
+            sync_groups: false,
             appearance: "system".into(),
             language: "system".into(),
             tray: true,
