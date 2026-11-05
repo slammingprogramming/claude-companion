@@ -339,6 +339,33 @@ when its window is closed, so quit it from the tray first), and it has been test
 databases built to the same layout, not against a real Claude profile. If a future Claude changes
 the layout, the run finds no group keys, or JSON it cannot read, and changes nothing.
 
+## Claude Code and MCP servers
+
+Claude Code (the `claude` program) keeps its own files, apart from Claude Desktop's: user settings
+in `~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR`), the account it is signed in as and its
+user-wide MCP servers in `~/.claude.json`, and one transcript per session under
+`~/.claude/projects/<folder>/<id>.jsonl`. Desktop's Code sessions use those same transcripts, so a
+session in the list can belong to both; `code sessions` marks the ones a Desktop chat card names.
+
+- **Finding it.** `CLAUDE_COMPANION_CLAUDE`, else `claude` on the PATH and the places its installers
+  use. On Windows Claude Desktop's own `claude.exe` (under `AnthropicClaude\app-…` or a Store
+  package) is skipped, since it is not the terminal program.
+- **Continuing a session.** Claude Code looks a session up in the folder it starts in, so `resume`
+  starts it in the folder the transcript says it worked in, and refuses when that folder is gone.
+  A new window is Windows Terminal (or a console), `Terminal.app` through `osascript`, or the first
+  known terminal on Linux; every argument is quoted for the shell it passes through.
+- **Settings.** A change reads the whole file, sets one dotted path, writes it back atomically and
+  keeps the previous file next to it. Shown settings hide the values of anything that looks like a
+  secret and of every `env` and `headers` entry.
+- **MCP servers.** Desktop's `claude_desktop_config.json` and Claude Code's `~/.claude.json` both hold
+  an `mcpServers` object, and a local-program entry (`command`, `args`, `env`) means the same in
+  both. `mcp share` copies what one lacks into the other, takes Claude Code's `type: "stdio"` out
+  for Desktop, leaves remote (`http`/`sse`) servers out of Desktop, and keeps a server that differs
+  unless a side and `--overwrite` are given. Desktop's file is written only while Desktop is
+  closed, since it rewrites the file when it quits. Both writes keep a backup and are read back; a
+  file that does not read back as written is put back. Claude Code rewrites `~/.claude.json` often,
+  so run `mcp share` while no Claude Code session is starting up.
+
 ## What cannot be synced from the outside
 
 - **Sidebar groups and order, while Claude runs.** Desktop keeps them per account and organization

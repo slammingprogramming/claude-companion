@@ -5,8 +5,9 @@
 <h1 align="center">Claude Companion</h1>
 
 <p align="center">
-  A desktop app and command-line tool that keep Claude Desktop's local sessions identical across
-  all your accounts, on Windows, macOS and Linux.<br>
+  One place to control <b>Claude Desktop</b> and <b>Claude Code</b> (the terminal program): a
+  desktop app and a command-line tool that keep your sessions identical across all your accounts,
+  share MCP servers between the two, and start or continue either, on Windows, macOS and Linux.<br>
   Sign out, sign in with another account, and everything is still there.
 </p>
 
@@ -44,6 +45,15 @@ Inherited from cc-same 0.1.12 (see [NOTICE.md](NOTICE.md)):
   claude-desktop-session-sync. It runs only while Claude is closed, backs up Claude's Local Storage
   first, and has been tested against stand-in databases only, never against a real Claude profile.
   See [how it works](docs/how-it-works.md#sidebar-groups).
+- **New in this fork: control both Claude Desktop and Claude Code.** `claude-companion code …`
+  shows where Claude Code is and who it is signed in as, lists its terminal sessions, continues one
+  in the folder it worked in (here or in a new terminal window), starts it anywhere, and reads or
+  changes its user settings (secrets are hidden when shown; every change keeps the old file).
+  `mcp list` / `mcp share` put the MCP servers of Desktop and Claude Code side by side and copy what
+  one lacks into the other. `open desktop|code` and `quit` start and stop the two. `doctor` reports
+  on both. In the app these are in Settings › Tools (*Claude Desktop*, *Claude Code (terminal)*,
+  *Share MCP servers*); quitting Claude from the app happens when you switch accounts, and the
+  command line's `quit` has no button of its own. Not done: switching Claude Code's own sign-in.
 - Ten interface languages, light and dark themes, and update checks against this repository's
   releases.
 
@@ -91,6 +101,15 @@ claude-companion chats copy     put chats into another account's list (--from, -
 claude-companion chats export   a chat as Markdown or a web page (--format md|html)
 claude-companion stats          tokens by model, day and folder, from local transcripts
 claude-companion groups         merge the sidebar groups of all accounts (--dry-run, --json)
+claude-companion code status    where Claude Code is, who it is signed in as, what it has (--json)
+claude-companion code sessions  terminal sessions, newest first (--dir, -n, --terminal-only, --json)
+claude-companion code resume <id|latest>   continue a session in its folder (--new-window)
+claude-companion code run [dir] [-- args]  start Claude Code here, or in a new window
+claude-companion code settings [key [value]]   show (secrets hidden) or change a user setting (--unset)
+claude-companion mcp list       MCP servers of Claude Desktop and Claude Code side by side
+claude-companion mcp share      copy servers one lacks into the other (--to, --overwrite, --dry-run)
+claude-companion open desktop   start Claude Desktop; `open code [dir]` opens a terminal with Claude Code
+claude-companion quit           quit Claude Desktop (--force on Windows)
 claude-companion config         --exclude <account-id>, --auto-join off, --groups on, …
 ```
 

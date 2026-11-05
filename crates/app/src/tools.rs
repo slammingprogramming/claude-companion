@@ -9,7 +9,7 @@ use crate::i18n::{t, tf, tn};
 use crate::model::{self, Busy};
 use crate::store::{Store, StoreEvent};
 use claude_companion_core::{Ctx, Partition, Surface};
-use claude_companion_core::{chats, desktop, diagnose, groups, logins, retention, scan, transcript};
+use claude_companion_core::{chats, code, desktop, diagnose, groups, logins, mcp, retention, scan, transcript};
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::{Disableable as _, IconName, Sizable as _, h_flex};
@@ -177,6 +177,41 @@ impl Store {
         });
     }
 
+    /// What `claude-companion mcp share [--dry-run]` prints: MCP servers one of Claude Desktop and
+    /// Claude Code lacks, copied into the other, or a preview of that.
+    pub fn share_mcp(&mut self, dry_run: bool, cx: &mut Context<Self>) {
+        self.report_in_background(cx, move |ctx| {
+            let body = match mcp::share(ctx, mcp::Direction::Both, false, dry_run) {
+                Ok(report) => format!("```text\n{}\n```", report.lines().join("\n")),
+                Err(e) => format!("```text\n{e:#}\n```"),
+            };
+            StoreEvent::Report(t("tools.mcp"), body)
+        });
+    }
+
+    /// Open Claude Code in a new terminal window: continuing `session` where it left off, or a new
+    /// one in the home folder.
+    pub fn open_code(&mut self, session: Option<String>, cx: &mut Context<Self>) {
+        self.run_task(Busy::Saving, cx, move |ctx| {
+            match session {
+                Some(id) => {
+                    let (dir, args) = code::resume_target(&code::resolve_session(ctx, &id)?)?;
+                    code::open_window(&dir, &args)?;
+                }
+                None => code::open_window(&claude_companion_core::paths::home(), &[])?,
+            }
+            Ok(t("toast.code_opened"))
+        });
+    }
+
+    /// Start the Claude app.
+    pub fn open_desktop(&mut self, cx: &mut Context<Self>) {
+        self.run_task(Busy::Saving, cx, |ctx| {
+            code::open_desktop(ctx)?;
+            Ok(t("toast.desktop_opened"))
+        });
+    }
+
     /// Write a chat as Markdown or a web page into the Downloads folder.
     pub fn export_chat(&mut self, id: String, title: String, html: bool, cx: &mut Context<Self>) {
         self.run_task(Busy::Saving, cx, move |ctx| {
@@ -226,6 +261,47 @@ fn recent_chats(ctx: &Ctx) -> Vec<(String, String)> {
 fn short_title(title: &str) -> String {
     let cut: String = title.chars().take(44).collect();
     if title.chars().count() > 44 { format!("{cut}…") } else { cut }
+}
+
+/// The terminal sessions most recently active, for the continue menu.
+fn recent_code_sessions(ctx: &Ctx) -> Vec<(String, String)> {
+    code::sessions(ctx, None, 14)
+        .into_iter()
+        .map(|s| {
+            let folder = s.cwd.rsplit(['/', '\\']).find(|p| !p.is_empty()).unwrap_or_default().to_string();
+            let title = if s.title.is_empty() { s.id.clone() } else { s.title };
+            (s.id, format!("{folder}: {title}"))
+        })
+        .collect()
+}
+
+/// A button that opens a menu of recent terminal sessions; picking one continues it in a new window.
+fn continue_button(store: &Entity<Store>, enabled: bool) -> AnyElement {
+    let store = store.clone();
+    Button::new("code-continue")
+        .small()
+        .outline()
+        .label(t("tools.code.continue"))
+        .dropdown_caret(true)
+        .disabled(!enabled)
+        .dropdown_menu_with_anchor(Anchor::TopRight, move |menu, _, cx| {
+            let ctx: Arc<Ctx> = store.read(cx).ctx.clone();
+            let mut menu = menu;
+            let recent = recent_code_sessions(&ctx);
+            if recent.is_empty() {
+                return menu.item(PopupMenuItem::new(t("tools.code.none")).disabled(true));
+            }
+            for (id, label) in recent {
+                let store = store.clone();
+                menu =
+                    menu.item(PopupMenuItem::new(SharedString::from(short_title(&label))).on_click(move |_, _, cx| {
+                        let id = id.clone();
+                        store.update(cx, |s, cx| s.open_code(Some(id), cx));
+                    }));
+            }
+            menu
+        })
+        .into_any_element()
 }
 
 /// A button that opens a menu of recent chats; picking one exports it.
@@ -305,7 +381,30 @@ pub fn rows(
             s.merge_groups(false, cx)
         }))
         .into_any_element();
+    let terminal = h_flex()
+        .gap_1()
+        .child(action_button(store, "code-open", IconName::SquareTerminal, t("tools.code.open"), idle, |s, cx| {
+            s.open_code(None, cx)
+        }))
+        .child(continue_button(store, idle))
+        .into_any_element();
+    let servers = h_flex()
+        .gap_1()
+        .child(action_button(store, "mcp-preview", IconName::Eye, t("tools.groups.preview"), idle, |s, cx| {
+            s.share_mcp(true, cx)
+        }))
+        .child(action_button(store, "mcp-share", IconName::Check, t("tools.mcp.share"), idle, |s, cx| {
+            s.share_mcp(false, cx)
+        }))
+        .into_any_element();
+    let claude =
+        action_button(store, "desktop-open", IconName::ExternalLink, t("tools.desktop.open"), idle, |s, cx| {
+            s.open_desktop(cx)
+        });
     vec![
+        row(t("tools.desktop"), Some(t("tools.desktop.detail")), claude, cx),
+        row(t("tools.code"), Some(t("tools.code.detail")), terminal, cx),
+        row(t("tools.mcp"), Some(t("tools.mcp.detail")), servers, cx),
         row(t("tools.groups"), Some(t("tools.groups.detail")), merge, cx),
         row(t("tools.lost"), Some(t("tools.lost.detail")), find, cx),
         row(t("tools.export"), Some(t("tools.export.detail")), exports, cx),

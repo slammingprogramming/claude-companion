@@ -25,12 +25,14 @@
 pub mod accounts;
 pub mod apply;
 pub mod chats;
+pub mod code;
 pub mod config;
 pub mod desktop;
 pub mod diagnose;
 pub mod fsx;
 pub mod groups;
 pub mod logins;
+pub mod mcp;
 pub mod merge;
 pub mod model;
 pub mod notify;

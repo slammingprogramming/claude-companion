@@ -112,6 +112,25 @@ pub fn doctor(ctx: &Ctx) -> String {
             p!("{mark} {}", warning_text(w));
         }
     }
+    let cc = crate::code::status(ctx, true);
+    p!("\nClaude Code (terminal)");
+    match (&cc.cli, &cc.version) {
+        (Some(path), Some(v)) => p!("  {v} at {}", path.display()),
+        (Some(path), None) => p!("  found at {}", path.display()),
+        (None, _) => p!("  not found (install it from https://claude.com/product/claude-code)"),
+    }
+    let who =
+        cc.email.as_deref().map_or("not signed in, or signed in without an account file".to_string(), str::to_string);
+    p!("  signed in as: {who}");
+    p!("  {} session(s) in {} folder(s); {} MCP server(s) of its own", cc.sessions, cc.projects, cc.mcp_servers);
+    let shared = crate::mcp::overview(ctx);
+    let (only_d, only_c) = (
+        shared.entries.iter().filter(|e| e.desktop && !e.code).count(),
+        shared.entries.iter().filter(|e| e.code && !e.desktop).count(),
+    );
+    if only_d + only_c > 0 {
+        p!("  MCP servers only in Desktop: {only_d}, only in Claude Code: {only_c} (share them with `claude-companion mcp share`)");
+    }
     let groups =
         if ctx.config().sync_groups { "on" } else { "off (turn on with `claude-companion config --groups on`)" };
     p!("\nSidebar groups: {groups}, merged only while Claude is closed.");

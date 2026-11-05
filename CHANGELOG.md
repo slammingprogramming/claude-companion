@@ -56,6 +56,25 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
   backed up first, and the write is checked and rolled back if it does not read back. Tested
   against stand-in databases, not yet against a real Claude profile.
 
+- **Control Claude Desktop and Claude Code from one place.**
+  - `claude-companion code status | sessions | resume | run | settings`: find Claude Code
+    (`CLAUDE_COMPANION_CLAUDE` overrides, Claude Desktop's own `claude.exe` is never mistaken for
+    it), see who it is signed in as, list its terminal sessions, continue one in the folder it
+    worked in (in this terminal or `--new-window`: Windows Terminal or a console on Windows,
+    Terminal on macOS, the first known terminal on Linux), and read or change its user settings
+    by dotted name. Shown settings hide secrets; a change keeps the previous file beside it.
+  - `claude-companion mcp list | share`: the MCP servers of Claude Desktop
+    (`claude_desktop_config.json`) and Claude Code (user scope in `~/.claude.json`) side by side,
+    and a copy of what one lacks into the other. Servers that differ are kept unless you pick a
+    side with `--to` and `--overwrite`; remote servers do not go into Desktop; Desktop's file is
+    only written while Desktop is closed; backups and a read-back check as for groups.
+  - `claude-companion open desktop | code [dir]` and `quit`; `doctor` now reports on Claude Code too.
+  - In the app, Settings › Tools has *Claude Desktop* (open), *Claude Code (terminal)* (a new
+    terminal, or continue a recent session) and *Share MCP servers* (preview, share).
+  - Not done: switching Claude Code's own sign-in, and a Quit button in the app (the app quits
+    Claude when it switches accounts). Checked with unit tests and read-only runs against a real
+    setup; opening terminal windows is untested on macOS and Linux.
+
 > Switching on Windows and Linux is tested against stand-in data and compiles on all three
 > systems, but it has not yet been run against a real Claude Desktop there. Treat it as a
 > first release of that feature, and report what you find.

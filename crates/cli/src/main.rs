@@ -2,9 +2,11 @@
 // Copyright (c) 2026 Songkeys (cc-same, MIT)
 // Copyright (C) 2026 SlammingProgramming and Claude Companion contributors
 // Derived from cc-same under the MIT license; see NOTICE.md and LICENSES/.
-//! `claude-companion`: keep Claude Desktop's local sessions identical across all your accounts.
+//! `claude-companion`: one place to control Claude Desktop and Claude Code (the terminal program),
+//! and to keep their sessions identical across all your accounts.
 
 mod chats_cmd;
+mod code_cmd;
 
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -31,7 +33,7 @@ use std::time::Duration;
 #[command(
     name = "claude-companion",
     version,
-    about = "Keep Claude Desktop's local sessions identical across all your accounts."
+    about = "Control Claude Desktop and Claude Code (the terminal program) from one place: accounts, sessions, MCP servers, settings."
 )]
 struct Cli {
     /// Claude Desktop's data folder (default: this platform's location)
@@ -106,6 +108,95 @@ enum ChatsCmd {
 enum OnOff {
     On,
     Off,
+}
+
+/// Which side receives MCP servers.
+#[derive(Clone, Copy, ValueEnum)]
+pub enum ShareTo {
+    /// Claude Code's servers go into Claude Desktop
+    Desktop,
+    /// Claude Desktop's servers go into Claude Code
+    Code,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum OpenWhat {
+    /// The Claude Desktop app
+    Desktop,
+    /// Claude Code in a new terminal window
+    Code,
+}
+
+#[derive(Subcommand)]
+enum CodeCmd {
+    /// Where Claude Code is, who it is signed in as, and what it has
+    Status {
+        #[arg(long)]
+        json: bool,
+    },
+    /// The terminal sessions on this computer, newest first
+    Sessions {
+        /// Only those that worked in this folder
+        #[arg(long, value_name = "DIR")]
+        dir: Option<PathBuf>,
+        #[arg(short = 'n', long, default_value_t = 20)]
+        limit: usize,
+        /// Leave out sessions that Claude Desktop also shows
+        #[arg(long)]
+        terminal_only: bool,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Continue a session (its id, the start of one, or `latest`) in the folder it worked in
+    Resume {
+        session: String,
+        /// Open a new terminal window instead of using this one
+        #[arg(long)]
+        new_window: bool,
+    },
+    /// Start Claude Code here, or in a new window; anything after `--` goes to `claude`
+    Run {
+        /// Folder to start in (default: this one)
+        dir: Option<PathBuf>,
+        /// Open a new terminal window instead of using this one
+        #[arg(long)]
+        new_window: bool,
+        #[arg(last = true)]
+        args: Vec<String>,
+    },
+    /// Show or change Claude Code's user settings (`model`, `permissions.defaultMode`, …)
+    Settings {
+        /// A setting, with dots for nesting: `permissions.defaultMode`
+        key: Option<String>,
+        /// The new value: JSON (`true`, `30`, `["a"]`) or text
+        value: Option<String>,
+        /// Remove the setting
+        #[arg(long, requires = "key", conflicts_with = "value")]
+        unset: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum McpCmd {
+    /// The MCP servers of Claude Desktop and Claude Code side by side
+    List {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Copy servers one side lacks into the other (a different server of the same name is kept)
+    Share {
+        /// Only this direction (default: both ways)
+        #[arg(long, value_enum)]
+        to: Option<ShareTo>,
+        /// Replace a different server of the same name (needs --to)
+        #[arg(long)]
+        overwrite: bool,
+        /// Show what would change without touching anything
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -222,6 +313,28 @@ enum Cmd {
     Stats {
         #[arg(long)]
         json: bool,
+    },
+    /// Claude Code, the terminal program: status, sessions, resume, run, settings
+    Code {
+        #[command(subcommand)]
+        cmd: CodeCmd,
+    },
+    /// MCP servers of Claude Desktop and Claude Code: list them, share them between the two
+    Mcp {
+        #[command(subcommand)]
+        cmd: McpCmd,
+    },
+    /// Start Claude Desktop, or Claude Code in a new terminal window
+    Open {
+        what: OpenWhat,
+        /// For `code`: the folder to open it in (default: this one)
+        dir: Option<PathBuf>,
+    },
+    /// Quit Claude Desktop (on Windows it keeps running in the tray when its window closes)
+    Quit {
+        /// End Claude if it has not quit when asked
+        #[arg(long)]
+        force: bool,
     },
     /// Merge the sidebar groups of all accounts (Claude must be closed)
     Groups {
@@ -358,6 +471,24 @@ fn run(cli: Cli) -> Result<()> {
             ChatsCmd::Export { chat, format, out } => chats_cmd::export(&ctx, &chat, format, out),
         },
         Cmd::Stats { json } => chats_cmd::stats(&ctx, json),
+        Cmd::Code { cmd } => match cmd {
+            CodeCmd::Status { json } => code_cmd::status(&ctx, json),
+            CodeCmd::Sessions { dir, limit, terminal_only, json } => {
+                code_cmd::sessions(&ctx, dir.as_deref(), limit, terminal_only, json)
+            }
+            CodeCmd::Resume { session, new_window } => code_cmd::resume(&ctx, &session, new_window),
+            CodeCmd::Run { dir, new_window, args } => code_cmd::run(dir, new_window, &args),
+            CodeCmd::Settings { key, value, unset } => {
+                code_cmd::settings(&ctx, key.as_deref(), value.as_deref(), unset)
+            }
+        },
+        Cmd::Mcp { cmd } => match cmd {
+            McpCmd::List { json } => code_cmd::mcp_list(&ctx, json),
+            McpCmd::Share { to, overwrite, dry_run, json } => code_cmd::mcp_share(&ctx, to, overwrite, dry_run, json),
+        },
+        Cmd::Open { what: OpenWhat::Desktop, .. } => code_cmd::open_desktop(&ctx),
+        Cmd::Open { what: OpenWhat::Code, dir } => code_cmd::run(dir, true, &[]),
+        Cmd::Quit { force } => code_cmd::quit_desktop(&ctx, force),
         Cmd::Groups { dry_run, json } => groups_cmd(&ctx, dry_run, json),
         Cmd::Config { exclude, include, auto_join, notify, groups } => {
             let mut cfg = ctx.config();
@@ -676,7 +807,7 @@ fn switch(ctx: &Ctx, account: Option<&str>, strategy: Option<Strategy>, json: bo
 }
 
 /// Claude asks before it quits when it has work in progress: say so, and what Ctrl-C does then.
-fn quit_watch(force: bool) -> desktop::Watch<'static> {
+pub(crate) fn quit_watch(force: bool) -> desktop::Watch<'static> {
     fn tell(quitting: Quitting) {
         match quitting {
             Quitting::Asked => {}
