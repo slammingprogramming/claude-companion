@@ -10,7 +10,7 @@ use crate::model::{self, Busy};
 use crate::store::{Store, StoreEvent};
 use claude_companion_core::{Ctx, Partition, Surface};
 use claude_companion_core::{
-    chats, code, code_login, desktop, diagnose, groups, logins, mcp, retention, scan, transcript,
+    chats, code, code_login, desktop, diagnose, groups, logins, mcp, report, retention, scan, transcript,
 };
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
@@ -222,6 +222,143 @@ impl Store {
         });
     }
 
+    /// What `claude-companion chats list` prints.
+    pub fn show_chats(&mut self, cx: &mut Context<Self>) {
+        self.report_in_background(cx, |ctx| {
+            let all = chats::list(ctx);
+            let mut text = String::new();
+            for c in all.iter().take(300) {
+                let list = c.list.split_once('/').map_or(c.list.as_str(), |(a, _)| claude_companion_core::short(a));
+                let archived = if c.archived { " [archived]" } else { "" };
+                let when =
+                    if c.last_activity_ms > 0 { report::ago(c.last_activity_ms as f64 / 1000.0) } else { "-".into() };
+                text.push_str(&format!("{:<10} {:<9} {}{archived}\n", list, when, c.title));
+            }
+            if all.len() > 300 {
+                text.push_str(&format!("... and {} more\n", all.len() - 300));
+            }
+            if text.is_empty() {
+                text.push_str("No chats yet.\n");
+            }
+            StoreEvent::Report(t("tools.chats"), format!("```text\n{text}```"))
+        });
+    }
+
+    /// What `claude-companion code sessions` prints.
+    pub fn show_code_sessions(&mut self, cx: &mut Context<Self>) {
+        self.report_in_background(cx, |ctx| {
+            let all = code::sessions(ctx, None, 60);
+            let mut text = String::new();
+            for s in &all {
+                let folder = s.cwd.rsplit(['/', '\\']).find(|p| !p.is_empty()).unwrap_or_default();
+                let from = if s.desktop { " [Desktop]" } else { "" };
+                text.push_str(&format!(
+                    "{:<8} {:<9} {:<22} {}{from}\n",
+                    &s.id[..s.id.len().min(8)],
+                    report::ago(s.last_ms as f64 / 1000.0),
+                    folder,
+                    s.title
+                ));
+            }
+            if text.is_empty() {
+                text.push_str("No sessions found.\n");
+            }
+            StoreEvent::Report(t("tools.sessions"), format!("```text\n{text}```"))
+        });
+    }
+
+    /// What `claude-companion code settings` prints: the user settings, secrets hidden.
+    pub fn show_code_settings(&mut self, cx: &mut Context<Self>) {
+        self.report_in_background(cx, |ctx| {
+            let body = match code::settings(ctx) {
+                Ok(map) => {
+                    let shown = code::redact(&serde_json::Value::Object(map));
+                    format!(
+                        "{}\n\n```json\n{}\n```",
+                        ctx.paths.claude_settings.display(),
+                        serde_json::to_string_pretty(&shown).unwrap_or_default()
+                    )
+                }
+                Err(e) => format!("```text\n{e:#}\n```"),
+            };
+            StoreEvent::Report(t("tools.codesettings"), body)
+        });
+    }
+
+    /// What `claude-companion mcp list` prints.
+    pub fn show_mcp(&mut self, cx: &mut Context<Self>) {
+        self.report_in_background(cx, |ctx| {
+            let ov = mcp::overview(ctx);
+            let mut text: String = ov.warnings.iter().map(|w| format!("warning: {w}\n")).collect();
+            for e in &ov.entries {
+                let mark = |b: bool| if b { "yes" } else { "-" };
+                let differs = if e.desktop && e.code && !e.same { "  (differs)" } else { "" };
+                text.push_str(&format!(
+                    "{:<24} {:<6} Desktop {:<4} Code {:<4} {}{differs}\n",
+                    e.name,
+                    e.kind,
+                    mark(e.desktop),
+                    mark(e.code),
+                    e.detail
+                ));
+            }
+            if ov.entries.is_empty() {
+                text.push_str("No MCP servers in Claude Desktop or Claude Code.\n");
+            }
+            StoreEvent::Report(t("tools.mcp"), format!("```text\n{text}```"))
+        });
+    }
+
+    /// Set Claude Code's default permission mode (`None` removes the setting).
+    pub fn set_permission_mode(&mut self, mode: Option<&'static str>, cx: &mut Context<Self>) {
+        self.run_task(Busy::Saving, cx, move |ctx| {
+            code::settings_set(ctx, "permissions.defaultMode", mode.map(serde_json::Value::from))?;
+            Ok(t("toast.code_mode"))
+        });
+    }
+
+    /// Put every chat of one account into another's list (newer cards win, nothing is deleted).
+    pub fn copy_chats(&mut self, from: String, to: String, cx: &mut Context<Self>) {
+        self.run_task(Busy::Saving, cx, move |ctx| {
+            let one = |query: &str| -> anyhow::Result<Partition> {
+                let mut lists = chats::resolve(ctx, query)?;
+                if lists.len() != 1 {
+                    anyhow::bail!("{}", t("tools.copy.orgs"));
+                }
+                Ok(lists.remove(0))
+            };
+            let done = chats::copy(ctx, &one(&from)?, &one(&to)?, &[])?;
+            Ok(tf("toast.copied", &[("count", &(done.created.len() + done.updated))]))
+        });
+    }
+
+    /// Quit Claude (on Windows it keeps running in the tray, so `force` ends it).
+    pub fn quit_desktop(&mut self, force: bool, cx: &mut Context<Self>) {
+        self.run_task(Busy::Saving, cx, move |ctx| {
+            if desktop::is_running(ctx) {
+                let watch = desktop::Watch { force, ..desktop::Watch::default() };
+                desktop::quit(ctx, std::time::Duration::from_secs(60), &watch)?;
+            }
+            Ok(t("toast.desktop_quit"))
+        });
+    }
+
+    /// Open Claude Code in a new terminal window, in `dir`.
+    pub fn open_code_in(&mut self, dir: PathBuf, cx: &mut Context<Self>) {
+        self.run_task(Busy::Saving, cx, move |_| {
+            code::open_window(&dir, &[])?;
+            Ok(t("toast.code_opened"))
+        });
+    }
+
+    /// Delete a saved Claude Code sign-in (Claude Code itself stays signed in).
+    pub fn forget_code_login(&mut self, id: String, cx: &mut Context<Self>) {
+        self.run_task(Busy::Saving, cx, move |ctx| {
+            let p = code_login::forget(ctx, &id)?;
+            Ok(tf("toast.code_login_forgot", &[("email", &p.email)]))
+        });
+    }
+
     /// Start the Claude app.
     pub fn open_desktop(&mut self, cx: &mut Context<Self>) {
         self.run_task(Busy::Saving, cx, |ctx| {
@@ -279,6 +416,128 @@ fn recent_chats(ctx: &Ctx) -> Vec<(String, String)> {
 fn short_title(title: &str) -> String {
     let cut: String = title.chars().take(44).collect();
     if title.chars().count() > 44 { format!("{cut}…") } else { cut }
+}
+
+/// What picking a menu item does.
+type Pick = Arc<dyn Fn(&mut Store, &mut Context<Store>) + Send + Sync>;
+
+/// A button that opens a menu built when it opens: `(label, disabled, what picking it does)`. The
+/// `empty` text shows when there are no items.
+fn menu_button(
+    store: &Entity<Store>,
+    id: &'static str,
+    label: String,
+    enabled: bool,
+    empty: String,
+    items: impl Fn(&Ctx, &Store) -> Vec<(String, bool, Pick)> + 'static,
+) -> AnyElement {
+    let store = store.clone();
+    Button::new(id)
+        .small()
+        .outline()
+        .label(label)
+        .dropdown_caret(true)
+        .disabled(!enabled)
+        .dropdown_menu_with_anchor(Anchor::TopRight, move |menu, _, cx| {
+            let ctx: Arc<Ctx> = store.read(cx).ctx.clone();
+            let list = items(&ctx, store.read(cx));
+            let mut menu = menu;
+            if list.is_empty() {
+                return menu.item(PopupMenuItem::new(empty.clone()).disabled(true));
+            }
+            for (text, disabled, pick) in list {
+                let store = store.clone();
+                menu =
+                    menu.item(PopupMenuItem::new(SharedString::from(short_title(&text))).disabled(disabled).on_click(
+                        move |_, _, cx| {
+                            let pick = pick.clone();
+                            store.update(cx, |s, cx| pick(s, cx));
+                        },
+                    ));
+            }
+            menu
+        })
+        .into_any_element()
+}
+
+/// Every ordered pair of accounts, for copying chats from one into the other.
+fn copy_menu(store: &Entity<Store>, enabled: bool) -> AnyElement {
+    menu_button(store, "chats-copy", t("tools.chats.copy"), enabled, t("tools.copy.none"), |_, store| {
+        let accounts = store.accounts();
+        let mut out: Vec<(String, bool, Pick)> = Vec::new();
+        for a in &accounts {
+            for b in accounts.iter().filter(|b| b.id != a.id) {
+                let (from, to) = (a.id.clone(), b.id.clone());
+                let pick: Pick = Arc::new(move |s, cx| s.copy_chats(from.clone(), to.clone(), cx));
+                out.push((format!("{} → {}", a.name, b.name), false, pick));
+            }
+        }
+        out
+    })
+}
+
+/// Claude Code's default permission mode.
+fn mode_menu(store: &Entity<Store>, enabled: bool) -> AnyElement {
+    menu_button(store, "code-mode", t("tools.codesettings.mode"), enabled, String::new(), |ctx, _| {
+        let now = code::settings(ctx)
+            .ok()
+            .and_then(|m| code::get_path(&m, "permissions.defaultMode").and_then(|v| v.as_str().map(str::to_string)));
+        let mut out: Vec<(String, bool, Pick)> = Vec::new();
+        for mode in [None, Some("acceptEdits"), Some("plan")] {
+            let on = now.as_deref() == mode;
+            let name = mode.unwrap_or("default");
+            let pick: Pick = Arc::new(move |s, cx| s.set_permission_mode(mode, cx));
+            out.push((if on { format!("✓ {name}") } else { name.to_string() }, on, pick));
+        }
+        out
+    })
+}
+
+/// Quit Claude, politely or not.
+fn quit_menu(store: &Entity<Store>, enabled: bool) -> AnyElement {
+    menu_button(store, "desktop-quit", t("tools.desktop.quit"), enabled, String::new(), |_, _| {
+        let ask: Pick = Arc::new(|s, cx| s.quit_desktop(false, cx));
+        let end: Pick = Arc::new(|s, cx| s.quit_desktop(true, cx));
+        vec![(t("tools.desktop.quit.ask"), false, ask), (t("tools.desktop.quit.end"), false, end)]
+    })
+}
+
+/// The folders terminal sessions worked in, most recent first: pick one to open Claude Code there.
+fn folder_menu(store: &Entity<Store>, enabled: bool) -> AnyElement {
+    menu_button(store, "code-folder", t("tools.code.folder"), enabled, t("tools.code.none"), |ctx, _| {
+        let mut seen = std::collections::HashSet::new();
+        code::sessions(ctx, None, 80)
+            .into_iter()
+            .filter(|s| !s.cwd.is_empty() && std::path::Path::new(&s.cwd).is_dir() && seen.insert(s.cwd.clone()))
+            .take(14)
+            .map(|s| {
+                let dir = PathBuf::from(&s.cwd);
+                let pick: Pick = Arc::new(move |st, cx| st.open_code_in(dir.clone(), cx));
+                (s.cwd, false, pick)
+            })
+            .collect()
+    })
+}
+
+/// The saved Claude Code sign-ins, to delete one.
+fn forget_menu(store: &Entity<Store>, enabled: bool) -> AnyElement {
+    menu_button(
+        store,
+        "code-login-forget",
+        t("tools.codelogin.forget"),
+        enabled && code_login::supported(),
+        t("tools.codelogin.none"),
+        |ctx, _| {
+            code_login::list(ctx)
+                .into_iter()
+                .map(|p| {
+                    let id = p.id.clone();
+                    let pick: Pick = Arc::new(move |s, cx| s.forget_code_login(id.clone(), cx));
+                    (format!("{} {}", t("tools.codelogin.forget").trim_end_matches('…'), p.email), false, pick)
+                })
+                .collect()
+        },
+    )
 }
 
 /// The terminal sessions most recently active, for the continue menu.
@@ -436,6 +695,7 @@ pub fn rows(
             s.open_code(None, cx)
         }))
         .child(continue_button(store, idle))
+        .child(folder_menu(store, idle))
         .into_any_element();
     let logins = h_flex()
         .gap_1()
@@ -448,6 +708,7 @@ pub fn rows(
             |s, cx| s.save_code_login(cx),
         ))
         .child(login_menu(store, idle))
+        .child(forget_menu(store, idle))
         .into_any_element();
     let servers = h_flex()
         .gap_1()
@@ -457,17 +718,39 @@ pub fn rows(
         .child(action_button(store, "mcp-share", IconName::Check, t("tools.mcp.share"), idle, |s, cx| {
             s.share_mcp(false, cx)
         }))
+        .child(action_button(store, "mcp-list", IconName::Info, t("tools.mcp.list"), true, |s, cx| s.show_mcp(cx)))
         .into_any_element();
-    let claude =
-        action_button(store, "desktop-open", IconName::ExternalLink, t("tools.desktop.open"), idle, |s, cx| {
+    let claude = h_flex()
+        .gap_1()
+        .child(action_button(store, "desktop-open", IconName::ExternalLink, t("tools.desktop.open"), idle, |s, cx| {
             s.open_desktop(cx)
-        });
+        }))
+        .child(quit_menu(store, idle))
+        .into_any_element();
+    let chats_row = h_flex()
+        .gap_1()
+        .child(action_button(store, "chats-list", IconName::Info, t("settings.show"), true, |s, cx| s.show_chats(cx)))
+        .child(copy_menu(store, idle))
+        .into_any_element();
+    let sessions = action_button(store, "sessions-list", IconName::Info, t("settings.show"), true, |s, cx| {
+        s.show_code_sessions(cx)
+    });
+    let code_settings = h_flex()
+        .gap_1()
+        .child(action_button(store, "code-settings", IconName::Info, t("settings.show"), true, |s, cx| {
+            s.show_code_settings(cx)
+        }))
+        .child(mode_menu(store, idle))
+        .into_any_element();
     vec![
         row(t("tools.desktop"), Some(t("tools.desktop.detail")), claude, cx),
         row(t("tools.code"), Some(t("tools.code.detail")), terminal, cx),
+        row(t("tools.sessions"), Some(t("tools.sessions.detail")), sessions, cx),
+        row(t("tools.codesettings"), Some(t("tools.codesettings.detail")), code_settings, cx),
         row(t("tools.codelogin"), Some(t("tools.codelogin.detail")), logins, cx),
         row(t("tools.mcp"), Some(t("tools.mcp.detail")), servers, cx),
         row(t("tools.groups"), Some(t("tools.groups.detail")), merge, cx),
+        row(t("tools.chats"), Some(t("tools.chats.detail")), chats_row, cx),
         row(t("tools.lost"), Some(t("tools.lost.detail")), find, cx),
         row(t("tools.export"), Some(t("tools.export.detail")), exports, cx),
         row(t("tools.stats"), Some(t("tools.stats.detail")), stats, cx),

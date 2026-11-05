@@ -79,8 +79,11 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
     reads back and puts both files back if it does not. `CLAUDE_CONFIG_DIR` is honoured. Not on
     macOS, where the sign-in is in the Keychain. Tested with stand-in files only, never against a
     real Claude Code sign-in; close running Claude Code sessions before switching.
-  - Not done: a Quit button in the app (the app quits Claude when it switches accounts). Opening
-    terminal windows is untested on macOS and Linux.
+  - **App and command line match.** Settings › Tools gained what it lacked: *All chats* (show,
+    and copy one account's chats into another's), *Terminal sessions*, *Claude Code settings*
+    (show, and the permission mode), *Show servers* for MCP, *Quit…* for Claude Desktop, *New in
+    folder…* and *Forget…* for Claude Code. What stays on one side only is listed in the README.
+  - Opening terminal windows is untested on macOS and Linux.
 
 > Switching on Windows and Linux is tested against stand-in data and compiles on all three
 > systems, but it has not yet been run against a real Claude Desktop there. Treat it as a

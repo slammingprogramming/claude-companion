@@ -120,6 +120,28 @@ claude-companion config         --exclude <account-id>, --auto-join off, --group
 The first time a sync copies sessions into the account Claude has open, quit and reopen Claude
 once: it only reads its session list at startup.
 
+### The app and the command line side by side
+
+Everything is in both, with these differences:
+
+| Command line | In the app |
+| --- | --- |
+| `doctor`, `plan`, `sync`, `status`, `install` / `uninstall` | The window's headline, *Sync now*, the background switch, Settings › Tools › *Diagnostics* |
+| `snapshots`, `restore`, `fix-symlinks`, `retention` | Settings › Snapshots, the fix-links notice, Settings › Transcripts |
+| `accounts`, `switch`, `add`, `remove`, `alias`, `enable` / `disable`, `move` | The account list |
+| `chats list`, `chats copy`, `chats lost`, `chats rescue`, `chats export`, `stats` | *All chats* (show, copy between two accounts), *Lost chats*, *Export a chat*, *Token statistics* |
+| `groups`, `config --groups` | *Merge sidebar groups*, Settings › Sync |
+| `code sessions`, `resume`, `run [dir]`, `status` | *Terminal sessions*, *Claude Code (terminal)* (new, continue, in a folder), *Diagnostics* |
+| `code settings` | *Claude Code settings*: show, and the permission mode. **Any other key is command line only.** |
+| `code login …` | *Claude Code sign-in* (save, switch, forget) |
+| `mcp list`, `mcp share` | *Share MCP servers* (show, preview, share) |
+| `open desktop` / `open code`, `quit` | *Claude Desktop* (open, quit), *Claude Code (terminal)* |
+
+Only in the app: the tray icon, light and dark themes, the interface language, opening at login,
+and update checks and installs (the command line is updated by installing a newer release). Only on
+the command line: `--json` output, `--dry-run`, `chats rescue` / `chats copy` for chosen chats
+rather than all, accounts with several organizations in `chats copy`, and any `code settings` key.
+
 ## Safety
 
 - Claude Companion only reads and writes inside Claude Desktop's data folder and its own state
