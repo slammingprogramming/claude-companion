@@ -26,6 +26,7 @@ pub mod accounts;
 pub mod apply;
 pub mod chats;
 pub mod code;
+pub mod code_login;
 pub mod config;
 pub mod desktop;
 pub mod diagnose;

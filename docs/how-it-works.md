@@ -357,6 +357,14 @@ session in the list can belong to both; `code sessions` marks the ones a Desktop
 - **Settings.** A change reads the whole file, sets one dotted path, writes it back atomically and
   keeps the previous file next to it. Shown settings hide the values of anything that looks like a
   secret and of every `env` and `headers` entry.
+- **Claude Code's sign-in.** On Windows and Linux it is `<config dir>/.credentials.json` plus the
+  `oauthAccount` entry of `.claude.json` (inside `$CLAUDE_CONFIG_DIR` when that is set, else in the
+  home folder). `code login save` copies both into `<state>/code-logins/<account id>/`, the
+  credentials byte for byte. `use` first saves what is signed in now (Claude Code rotates its
+  tokens, so the newest copy is the one to keep), backs up both files, writes the other
+  account's, reads them back, and restores both files on any mismatch. macOS keeps the sign-in in
+  the Keychain; moving it would mean passing the secret to `security` on a command line, so it is
+  not offered. The Desktop account list is separate: switching one does not switch the other.
 - **MCP servers.** Desktop's `claude_desktop_config.json` and Claude Code's `~/.claude.json` both hold
   an `mcpServers` object, and a local-program entry (`command`, `args`, `env`) means the same in
   both. `mcp share` copies what one lacks into the other, takes Claude Code's `type: "stdio"` out

@@ -53,7 +53,10 @@ Inherited from cc-same 0.1.12 (see [NOTICE.md](NOTICE.md)):
   one lacks into the other. `open desktop|code` and `quit` start and stop the two. `doctor` reports
   on both. In the app these are in Settings › Tools (*Claude Desktop*, *Claude Code (terminal)*,
   *Share MCP servers*); quitting Claude from the app happens when you switch accounts, and the
-  command line's `quit` has no button of its own. Not done: switching Claude Code's own sign-in.
+  command line's `quit` has no button of its own. **Claude Code's own sign-in can be switched** on
+  Windows and Linux (`code login save | list | use | forget`, and *Claude Code sign-in* in
+  Settings › Tools): sign in with `/login` in `claude`, save it, and switch between saved accounts.
+  Not available on macOS, where the sign-in is in the Keychain.
 - Ten interface languages, light and dark themes, and update checks against this repository's
   releases.
 
@@ -105,6 +108,7 @@ claude-companion code status    where Claude Code is, who it is signed in as, wh
 claude-companion code sessions  terminal sessions, newest first (--dir, -n, --terminal-only, --json)
 claude-companion code resume <id|latest>   continue a session in its folder (--new-window)
 claude-companion code run [dir] [-- args]  start Claude Code here, or in a new window
+claude-companion code login save|list|use <who>|forget <who>   switch Claude Code's own account
 claude-companion code settings [key [value]]   show (secrets hidden) or change a user setting (--unset)
 claude-companion mcp list       MCP servers of Claude Desktop and Claude Code side by side
 claude-companion mcp share      copy servers one lacks into the other (--to, --overwrite, --dry-run)

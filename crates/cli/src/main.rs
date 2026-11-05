@@ -164,6 +164,11 @@ enum CodeCmd {
         #[arg(last = true)]
         args: Vec<String>,
     },
+    /// The account Claude Code is signed in to: save it, list saved ones, switch, forget
+    Login {
+        #[command(subcommand)]
+        cmd: LoginCmd,
+    },
     /// Show or change Claude Code's user settings (`model`, `permissions.defaultMode`, …)
     Settings {
         /// A setting, with dots for nesting: `permissions.defaultMode`
@@ -173,6 +178,25 @@ enum CodeCmd {
         /// Remove the setting
         #[arg(long, requires = "key", conflicts_with = "value")]
         unset: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum LoginCmd {
+    /// The saved sign-ins, and which one Claude Code has now
+    List {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Save the sign-in Claude Code has now (sign in with /login in `claude` first)
+    Save,
+    /// Make Claude Code use a saved sign-in (its number, email or the start of its id)
+    Use { account: String },
+    /// Delete a saved sign-in; Claude Code stays as it is
+    Forget {
+        account: String,
+        #[arg(short, long)]
+        yes: bool,
     },
 }
 
@@ -478,6 +502,17 @@ fn run(cli: Cli) -> Result<()> {
             }
             CodeCmd::Resume { session, new_window } => code_cmd::resume(&ctx, &session, new_window),
             CodeCmd::Run { dir, new_window, args } => code_cmd::run(dir, new_window, &args),
+            CodeCmd::Login { cmd } => match cmd {
+                LoginCmd::List { json } => code_cmd::login_list(&ctx, json),
+                LoginCmd::Save => code_cmd::login_save(&ctx),
+                LoginCmd::Use { account } => code_cmd::login_use(&ctx, &account),
+                LoginCmd::Forget { account, yes } => {
+                    if !yes && !confirm("Delete this saved sign-in? Claude Code itself stays signed in.") {
+                        return Ok(());
+                    }
+                    code_cmd::login_forget(&ctx, &account)
+                }
+            },
             CodeCmd::Settings { key, value, unset } => {
                 code_cmd::settings(&ctx, key.as_deref(), value.as_deref(), unset)
             }

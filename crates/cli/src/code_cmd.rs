@@ -6,6 +6,7 @@
 use super::{quit_watch, ShareTo};
 use anyhow::{bail, Result};
 use claude_companion_core::code::{self, Session};
+use claude_companion_core::code_login;
 use claude_companion_core::mcp::{self, Direction};
 use claude_companion_core::{desktop, report, Ctx};
 use serde_json::json;
@@ -98,6 +99,48 @@ pub fn resume(ctx: &Ctx, query: &str, new_window: bool) -> Result<()> {
 
 pub fn run(dir: Option<PathBuf>, new_window: bool, args: &[String]) -> Result<()> {
     start(dir.as_deref(), args, new_window)
+}
+
+pub fn login_list(ctx: &Ctx, json: bool) -> Result<()> {
+    let all = code_login::list(ctx);
+    if json {
+        return print_json(json!({
+            "schemaVersion": 1,
+            "supported": code_login::supported(),
+            "signedInAs": code::signed_in_email(ctx),
+            "logins": all,
+        }));
+    }
+    println!("Claude Code is signed in as: {}", code::signed_in_email(ctx).as_deref().unwrap_or("-"));
+    if all.is_empty() {
+        println!("No saved sign-ins. Sign in with /login in `claude`, then run `claude-companion code login save`.");
+        return Ok(());
+    }
+    for (i, p) in all.iter().enumerate() {
+        let now = if p.current { "  <- in use" } else { "" };
+        println!("  {}. {:<32} saved {}{now}", i + 1, p.email, report::ago(p.saved_at));
+    }
+    Ok(())
+}
+
+pub fn login_save(ctx: &Ctx) -> Result<()> {
+    let p = code_login::save_current(ctx)?;
+    println!("Saved Claude Code's sign-in as {}.", p.email);
+    println!("To add another account: run `claude`, sign in with /login, then save again.");
+    Ok(())
+}
+
+pub fn login_use(ctx: &Ctx, account: &str) -> Result<()> {
+    eprintln!("Close any running Claude Code sessions first; a running one writes its sign-in back.");
+    let p = code_login::switch_to(ctx, account)?;
+    println!("Claude Code is now signed in as {}.", p.email);
+    Ok(())
+}
+
+pub fn login_forget(ctx: &Ctx, account: &str) -> Result<()> {
+    let p = code_login::forget(ctx, account)?;
+    println!("Deleted the saved sign-in for {}.", p.email);
+    Ok(())
 }
 
 pub fn settings(ctx: &Ctx, key: Option<&str>, value: Option<&str>, unset: bool) -> Result<()> {

@@ -71,9 +71,16 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
   - `claude-companion open desktop | code [dir]` and `quit`; `doctor` now reports on Claude Code too.
   - In the app, Settings › Tools has *Claude Desktop* (open), *Claude Code (terminal)* (a new
     terminal, or continue a recent session) and *Share MCP servers* (preview, share).
-  - Not done: switching Claude Code's own sign-in, and a Quit button in the app (the app quits
-    Claude when it switches accounts). Checked with unit tests and read-only runs against a real
-    setup; opening terminal windows is untested on macOS and Linux.
+  - `claude-companion code login save | list | use | forget`: switch the account **Claude Code**
+    is signed in to (Windows and Linux; the app has *Claude Code sign-in* in Settings › Tools).
+    A saved sign-in is a byte-for-byte copy of `.credentials.json` plus the `oauthAccount` entry of
+    `.claude.json`, kept in Claude Companion's private state folder and never read or printed.
+    Switching saves the current sign-in first (so refreshed tokens are kept), checks the result
+    reads back and puts both files back if it does not. `CLAUDE_CONFIG_DIR` is honoured. Not on
+    macOS, where the sign-in is in the Keychain. Tested with stand-in files only, never against a
+    real Claude Code sign-in; close running Claude Code sessions before switching.
+  - Not done: a Quit button in the app (the app quits Claude when it switches accounts). Opening
+    terminal windows is untested on macOS and Linux.
 
 > Switching on Windows and Linux is tested against stand-in data and compiles on all three
 > systems, but it has not yet been run against a real Claude Desktop there. Treat it as a

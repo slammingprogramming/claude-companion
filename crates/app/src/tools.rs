@@ -9,7 +9,9 @@ use crate::i18n::{t, tf, tn};
 use crate::model::{self, Busy};
 use crate::store::{Store, StoreEvent};
 use claude_companion_core::{Ctx, Partition, Surface};
-use claude_companion_core::{chats, code, desktop, diagnose, groups, logins, mcp, retention, scan, transcript};
+use claude_companion_core::{
+    chats, code, code_login, desktop, diagnose, groups, logins, mcp, retention, scan, transcript,
+};
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::{Disableable as _, IconName, Sizable as _, h_flex};
@@ -204,6 +206,22 @@ impl Store {
         });
     }
 
+    /// Save the sign-in Claude Code has now, so it can be switched back to.
+    pub fn save_code_login(&mut self, cx: &mut Context<Self>) {
+        self.run_task(Busy::Saving, cx, |ctx| {
+            let p = code_login::save_current(ctx)?;
+            Ok(tf("toast.code_login_saved", &[("email", &p.email)]))
+        });
+    }
+
+    /// Make Claude Code use a saved sign-in.
+    pub fn switch_code_login(&mut self, id: String, cx: &mut Context<Self>) {
+        self.run_task(Busy::Saving, cx, move |ctx| {
+            let p = code_login::switch_to(ctx, &id)?;
+            Ok(tf("toast.code_login_switched", &[("email", &p.email)]))
+        });
+    }
+
     /// Start the Claude app.
     pub fn open_desktop(&mut self, cx: &mut Context<Self>) {
         self.run_task(Busy::Saving, cx, |ctx| {
@@ -273,6 +291,37 @@ fn recent_code_sessions(ctx: &Ctx) -> Vec<(String, String)> {
             (s.id, format!("{folder}: {title}"))
         })
         .collect()
+}
+
+/// A button that opens a menu of the saved Claude Code sign-ins; picking one switches to it.
+fn login_menu(store: &Entity<Store>, enabled: bool) -> AnyElement {
+    let store = store.clone();
+    Button::new("code-login-switch")
+        .small()
+        .outline()
+        .label(t("tools.codelogin.switch"))
+        .dropdown_caret(true)
+        .disabled(!enabled || !code_login::supported())
+        .dropdown_menu_with_anchor(Anchor::TopRight, move |menu, _, cx| {
+            let ctx: Arc<Ctx> = store.read(cx).ctx.clone();
+            let mut menu = menu;
+            let saved = code_login::list(&ctx);
+            if saved.is_empty() {
+                return menu.item(PopupMenuItem::new(t("tools.codelogin.none")).disabled(true));
+            }
+            for p in saved {
+                let store = store.clone();
+                let label = if p.current { format!("✓ {}", p.email) } else { p.email.clone() };
+                menu = menu.item(PopupMenuItem::new(SharedString::from(label)).disabled(p.current).on_click(
+                    move |_, _, cx| {
+                        let id = p.id.clone();
+                        store.update(cx, |s, cx| s.switch_code_login(id, cx));
+                    },
+                ));
+            }
+            menu
+        })
+        .into_any_element()
 }
 
 /// A button that opens a menu of recent terminal sessions; picking one continues it in a new window.
@@ -388,6 +437,18 @@ pub fn rows(
         }))
         .child(continue_button(store, idle))
         .into_any_element();
+    let logins = h_flex()
+        .gap_1()
+        .child(action_button(
+            store,
+            "code-login-save",
+            IconName::Check,
+            t("tools.codelogin.save"),
+            idle && code_login::supported(),
+            |s, cx| s.save_code_login(cx),
+        ))
+        .child(login_menu(store, idle))
+        .into_any_element();
     let servers = h_flex()
         .gap_1()
         .child(action_button(store, "mcp-preview", IconName::Eye, t("tools.groups.preview"), idle, |s, cx| {
@@ -404,6 +465,7 @@ pub fn rows(
     vec![
         row(t("tools.desktop"), Some(t("tools.desktop.detail")), claude, cx),
         row(t("tools.code"), Some(t("tools.code.detail")), terminal, cx),
+        row(t("tools.codelogin"), Some(t("tools.codelogin.detail")), logins, cx),
         row(t("tools.mcp"), Some(t("tools.mcp.detail")), servers, cx),
         row(t("tools.groups"), Some(t("tools.groups.detail")), merge, cx),
         row(t("tools.lost"), Some(t("tools.lost.detail")), find, cx),
