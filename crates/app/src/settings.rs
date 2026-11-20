@@ -370,6 +370,7 @@ fn body(store: &Entity<Store>, cx: &mut App) -> impl IntoElement {
         row(t("settings.whats_new"), Some(t("settings.whats_new.detail")), changelog.into_any_element(), cx),
     ];
 
+    let about = tools::about_rows(store, cx, row);
     v_flex()
         .gap_6()
         .pb_6()
@@ -381,6 +382,7 @@ fn body(store: &Entity<Store>, cx: &mut App) -> impl IntoElement {
         .child(group(t("settings.snapshots"), restore, cx))
         .child(group(t("settings.files"), files, cx))
         .child(group(t("settings.updates"), updating, cx))
+        .child(group(t("about.title"), about, cx))
         .child(
             div()
                 .text_center()

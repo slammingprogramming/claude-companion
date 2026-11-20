@@ -10,6 +10,7 @@ mod code_cmd;
 
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand, ValueEnum};
+use claude_companion_core::about;
 use claude_companion_core::accounts::{self, NotFound, Roster, Slot, Strategy};
 use claude_companion_core::desktop::{self, Quitting};
 use claude_companion_core::diagnose;
@@ -354,6 +355,11 @@ enum Cmd {
         /// For `code`: the folder to open it in (default: this one)
         dir: Option<PathBuf>,
     },
+    /// Version, licence, how to contact the developer and how to support the project
+    About {
+        #[arg(long)]
+        json: bool,
+    },
     /// Quit Claude Desktop (on Windows it keeps running in the tray when its window closes)
     Quit {
         /// End Claude if it has not quit when asked
@@ -524,6 +530,23 @@ fn run(cli: Cli) -> Result<()> {
         Cmd::Open { what: OpenWhat::Desktop, .. } => code_cmd::open_desktop(&ctx),
         Cmd::Open { what: OpenWhat::Code, dir } => code_cmd::run(dir, true, &[]),
         Cmd::Quit { force } => code_cmd::quit_desktop(&ctx, force),
+        Cmd::About { json } => {
+            if json {
+                let out = serde_json::json!({
+                    "schemaVersion": 1,
+                    "version": claude_companion_core::VERSION,
+                    "license": "AGPL-3.0-or-later",
+                    "source": about::PROJECT,
+                    "contactSimplex": about::CONTACT_SIMPLEX,
+                    "donateKofi": about::DONATE_KOFI,
+                    "crypto": about::COINS,
+                });
+                println!("{}", serde_json::to_string_pretty(&out)?);
+            } else {
+                print!("{}", about::text());
+            }
+            Ok(())
+        }
         Cmd::Groups { dry_run, json } => groups_cmd(&ctx, dry_run, json),
         Cmd::Config { exclude, include, auto_join, notify, groups } => {
             let mut cfg = ctx.config();

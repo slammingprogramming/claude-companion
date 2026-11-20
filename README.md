@@ -170,6 +170,27 @@ Linux needs `clang cmake libfontconfig-dev libssl-dev libvulkan1 libwayland-dev 
 libxkbcommon-x11-dev libzstd-dev pkg-config` for the app. [`docs/how-it-works.md`](docs/how-it-works.md)
 describes how Claude Desktop's data is laid out and why the sync is safe.
 
+## Contact and support
+
+Claude Companion is free software made in spare time. If it is useful to you:
+
+- **Contact the developer** on SimpleX (private, no account needed):
+  [SimpleX contact link](https://smp14.simplex.im/a#3gZ-zeHs4QrFZKLAN0o3SC_XQJXhj1eYBVTO_c0FAtg).
+  For bugs and ideas that others can read too, use the
+  [issue tracker](https://github.com/slammingprogramming/claude-companion/issues).
+- **Donate** in ordinary money through [Ko-fi](https://ko-fi.com/scenprogramming), or in crypto:
+
+| Coin | Address |
+| --- | --- |
+| Bitcoin (BTC) | `sp1qq2637t6ve9zp4wh0e4ly2u7h7jwfn0k6c4535lxpp3wrqvmkua6xjqkwevyz0wwqx5ly2f0q29qh48wgf9gl0zt049za9kr9m8xgkey4cyggxa0x` (a Silent Payments address: your wallet must support BIP 352) |
+| Ethereum (ETH) | `0x8F238db898102125Fd968ed7CaD959Cb594a7e93` |
+| Monero (XMR) | `8AYK93mQEzsFFEFkuPN7wC9rPcXCyEXa1Ye5bH9U2GR3PpaZiYc84SxjMcdSdVMaaQUGmCXYkuxdDSG5bM3EVyqR25nbumV` |
+
+The same details are in the app (Settings › About and support, with buttons that copy each
+address) and from `claude-companion about`. Donations are voluntary and buy nothing: there is no
+paid tier, and the software and its license are the same for everyone. Only trust these details
+from this repository or from the app itself.
+
 ## License and credits
 
 Copyright (C) 2026 SlammingProgramming and Claude Companion contributors.

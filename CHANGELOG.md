@@ -85,6 +85,12 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
     folder…* and *Forget…* for Claude Code. What stays on one side only is listed in the README.
   - Opening terminal windows is untested on macOS and Linux.
 
+- **Contact and support.** `claude-companion about` (and Settings › About and support in the
+  app) shows the version and licence, a SimpleX contact link for the developer, the Ko-fi page and
+  crypto donation addresses (buttons copy each address; the Bitcoin one is a Silent Payments
+  address). It only shows them: nothing is sent anywhere. A `.github/FUNDING.yml` adds a Sponsor
+  button on GitHub.
+
 > Switching on Windows and Linux is tested against stand-in data and compiles on all three
 > systems, but it has not yet been run against a real Claude Desktop there. Treat it as a
 > first release of that feature, and report what you find.

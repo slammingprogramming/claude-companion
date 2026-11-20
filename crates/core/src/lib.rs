@@ -22,6 +22,7 @@
 //! * Nothing is hard-deleted: copy-on-write snapshots before changes, a trash folder for
 //!   anything removed or replaced.
 
+pub mod about;
 pub mod accounts;
 pub mod apply;
 pub mod chats;

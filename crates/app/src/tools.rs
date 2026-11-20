@@ -8,6 +8,7 @@
 use crate::i18n::{t, tf, tn};
 use crate::model::{self, Busy};
 use crate::store::{Store, StoreEvent};
+use claude_companion_core::about;
 use claude_companion_core::{Ctx, Partition, Surface};
 use claude_companion_core::{
     chats, code, code_login, desktop, diagnose, groups, logins, mcp, report, retention, scan, transcript,
@@ -16,7 +17,8 @@ use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::component::{Disableable as _, IconName, Sizable as _, h_flex};
 use gpui_kit::{
-    Anchor, AnyElement, App, Context, Entity, IntoElement as _, ParentElement as _, SharedString, Styled as _,
+    Anchor, AnyElement, App, ClipboardItem, Context, Entity, IntoElement as _, ParentElement as _, SharedString,
+    Styled as _,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -659,6 +661,70 @@ fn action_button(
         .disabled(!enabled)
         .on_click(move |_, _, cx: &mut App| store.update(cx, |s, cx| run(s, cx)))
         .into_any_element()
+}
+
+/// A button that copies `text` and says so.
+fn copy_button(store: &Entity<Store>, id: SharedString, label: String, text: &'static str, done: String) -> AnyElement {
+    let store = store.clone();
+    Button::new(id)
+        .small()
+        .outline()
+        .icon(IconName::Copy)
+        .label(label)
+        .on_click(move |_, _, cx: &mut App| {
+            cx.write_to_clipboard(ClipboardItem::new_string(text.to_string()));
+            let done = done.clone();
+            store.update(cx, |_, cx| cx.emit(StoreEvent::Done(Ok(done))));
+        })
+        .into_any_element()
+}
+
+/// The rows of the *About and support* group: how to reach the developer and how to support the
+/// project (`claude-companion about` on the command line).
+pub fn about_rows(
+    store: &Entity<Store>,
+    cx: &App,
+    row: impl Fn(String, Option<String>, AnyElement, &App) -> AnyElement,
+) -> Vec<AnyElement> {
+    let contact = h_flex()
+        .gap_1()
+        .child(
+            Button::new("about-contact")
+                .small()
+                .outline()
+                .icon(IconName::ExternalLink)
+                .label(t("about.open"))
+                .on_click(|_, _, cx: &mut App| cx.open_url(about::CONTACT_SIMPLEX)),
+        )
+        .child(copy_button(
+            store,
+            "about-contact-copy".into(),
+            t("about.copy_link"),
+            about::CONTACT_SIMPLEX,
+            t("toast.link_copied"),
+        ))
+        .into_any_element();
+    let donate = Button::new("about-donate")
+        .small()
+        .outline()
+        .icon(IconName::ExternalLink)
+        .label("Ko-fi")
+        .on_click(|_, _, cx: &mut App| cx.open_url(about::DONATE_KOFI))
+        .into_any_element();
+    let crypto = about::COINS.iter().fold(h_flex().gap_1(), |flex, coin| {
+        flex.child(copy_button(
+            store,
+            SharedString::from(format!("about-{}", coin.ticker)),
+            coin.ticker.to_string(),
+            coin.address,
+            tf("toast.address_copied", &[("coin", &coin.name)]),
+        ))
+    });
+    vec![
+        row(t("about.contact"), Some(t("about.contact.detail")), contact, cx),
+        row(t("about.donate"), Some(t("about.donate.detail")), donate, cx),
+        row(t("about.crypto"), Some(t("about.crypto.detail")), crypto.into_any_element(), cx),
+    ]
 }
 
 /// The rows of the *Tools* group.
