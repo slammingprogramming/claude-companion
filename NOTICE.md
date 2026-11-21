@@ -58,6 +58,10 @@ and license text travel with its source on crates.io.
 
 ## Artwork
 
-The icon and tray artwork in this repository are inherited from cc-same (MIT) and are expected to
-be replaced by Claude Companion's own artwork. Screenshots from cc-same have been removed from the
-README for that reason.
+The icon and tray artwork are Claude Companion's own: two overlapping window outlines with a
+prompt chevron, drawn by [`scripts/make-art.py`](scripts/make-art.py) and under
+`AGPL-3.0-or-later` like the rest of the code. They replace cc-same's rings. The two screenshots in
+`docs/images/` are still cc-same's (MIT, Copyright (c) Songkeys) and show its old icon; they are
+not used by the README and will be replaced when new ones are taken. The app's own colours and
+layout still follow cc-same's design. Claude Companion is not affiliated with Anthropic and its
+artwork deliberately does not imitate Claude's.

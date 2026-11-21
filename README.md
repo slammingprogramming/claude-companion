@@ -11,10 +11,10 @@
   Sign out, sign in with another account, and everything is still there.
 </p>
 
-> **Status: early fork.** Claude Companion is a hard fork of [cc-same](https://github.com/songkeys/cc-same)
-> by Songkeys, with the goals listed under [Roadmap](#roadmap). Today it does what cc-same 0.1.12
-> does, under a new name and license. The roadmap items are not done yet; this README says so
-> plainly rather than promising them.
+> **Status: first release of a fork.** Claude Companion is a hard fork of
+> [cc-same](https://github.com/songkeys/cc-same) by Songkeys, with the goals listed under
+> [Roadmap](#roadmap). The features are written and tested against stand-in data; what has not yet
+> been run on real systems is listed plainly under *Still needs real-world testing*.
 
 ## Why
 
@@ -62,23 +62,42 @@ Inherited from cc-same 0.1.12 (see [NOTICE.md](NOTICE.md)):
 
 ## Roadmap
 
-1. **GUI and CLI parity.** Every feature reachable from one is reachable from the other. Done
-   except `chats copy` in the app, which is aimed at accounts kept out of sync.
-2. **Windows, macOS and Linux, fully.** Account switching, quitting and starting Claude Desktop
-   now exist on all three (see above); real-world testing on Windows and Linux, and background
-   sync checks on each, remain.
+Everything below that can be done without other people's computers is done. What is left needs
+real machines and real accounts, and is listed at the end.
+
+1. **GUI and CLI parity.** Done. Every command has an app control and the other way round, apart
+   from the differences in [the table below](#the-app-and-the-command-line-side-by-side).
+2. **Windows, macOS and Linux.** Written for all three and compile-checked for all three
+   (the engine and command line for Linux and macOS from a Windows machine; the app is built by the
+   release workflow on each). Only Windows has been run, and only read-only against a real Claude
+   setup (see *Still needs real-world testing*).
 3. **Rename and relicense.** Done: the project is Claude Companion, `AGPL-3.0-or-later`.
-4. **Features from two sibling projects**, re-implemented in Rust and credited:
+4. **Features from two sibling projects**, re-implemented in Rust and credited. Done:
    - [claude-desktop-session-sync](https://github.com/RasmusKD/claude-desktop-session-sync):
-     sidebar groups: done (opt-in, see above). Its three-way scheduled-task merging, deletion
+     sidebar groups (opt-in, see above). Its three-way scheduled-task merging, deletion
      stash and backups were already in cc-same (tasks merged three ways, a 30-day trash,
      snapshots), and its account freezing is what `config --exclude` / the account list's
      include switch do here, so nothing else is missing.
    - [claude-switcher](https://github.com/nyxon-tech/claude-switcher): recover lost chats, copy
-     and merge chats between accounts, token statistics, export (command line done; app screens
-     and a doctor check remain). Undo uses sync's snapshots (`restore`) instead of a journal, and
-     there is no *move*, which sync's deletions would turn into deleting the chat everywhere.
-5. **Credits kept honest**: see [NOTICE.md](NOTICE.md).
+     chats between accounts, token statistics, export, switching logins on every system, and a
+     doctor check, on the command line and in the app. Undo uses sync's snapshots (`restore`)
+     instead of a journal, and there is no *move*, which sync's deletions would turn into
+     deleting the chat everywhere.
+5. **Beyond the original list.** Control of Claude Code (the terminal program) next to Claude
+   Desktop: sessions, resume, settings, its own sign-in switching (not on macOS), MCP servers shared
+   between the two, and starting and quitting either.
+6. **Credits kept honest**: see [NOTICE.md](NOTICE.md).
+
+### Still needs real-world testing
+
+- Account switching on Windows and Linux against a real Claude Desktop (written from
+  claude-switcher's research, tested on stand-in data only).
+- Sidebar-group sync: a real Claude opening a database this tool wrote.
+- Claude Code sign-in switching with a real sign-in.
+- Everything on macOS and Linux; the app on both has not been run.
+- Opening terminal windows on macOS and Linux.
+- Artwork: the icon and tray images are new; they have not yet been seen in a real tray, Dock or
+  taskbar on each system, and `docs/images/` still holds cc-same's two old screenshots.
 
 ## Using the command line
 

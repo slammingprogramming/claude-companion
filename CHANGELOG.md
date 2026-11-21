@@ -97,6 +97,8 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
 
 ### Changed
 
+- **New icon and tray artwork** (two overlapping window outlines with a prompt chevron), replacing
+  cc-same's rings, with the script that draws it all (`scripts/make-art.py`).
 - **Claude Companion.** This is a hard fork of cc-same 0.1.12, renamed to Claude Companion. The
   command is `claude-companion`, settings and state live in a `claude-companion` folder, the
   environment variables start with `CLAUDE_COMPANION_`, and updates come from this project's

@@ -1,15 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
-  <!-- The same glyph with a dot: something needs the user. -->
-  <defs>
-    <mask id="cut">
-      <rect width="36" height="36" fill="#fff"/>
-      <circle cx="30" cy="7.5" r="6.4" fill="#000"/>
-    </mask>
-  </defs>
-  <g mask="url(#cut)">
-    <path d="M18 10.8 A8.6 8.6 0 0 1 18 25.2 A8.6 8.6 0 0 1 18 10.8 Z" fill="#000" fill-opacity="0.5"/>
-    <circle cx="13.2" cy="18" r="8.6" fill="none" stroke="#000" stroke-width="2.4"/>
-    <circle cx="22.8" cy="18" r="8.6" fill="none" stroke="#000" stroke-width="2.4"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="280 330 464 364">
+  <g fill="none" stroke="#000000" stroke-width="44" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="280" y="330" width="300" height="300" rx="56" />
+    <rect x="444" y="394" width="300" height="300" rx="56" />
+    <polyline points="632,478 694,544 632,610" stroke-width="34"/>
   </g>
-  <circle cx="30" cy="7.5" r="4.2" fill="#000"/>
+  <circle cx="704" cy="372" r="62" fill="#000000"/>
 </svg>
