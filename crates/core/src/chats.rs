@@ -552,7 +552,9 @@ mod tests {
         let env = Env::new(false);
         env.card(A, U1, "New in A", "c1", 100);
         env.card(A, U2, "Newer in A", "c2", 500);
-        env.card(B, U2, "Older in B", "c2", 200);
+        // A different length from A's card: the scan cache keys on size and modification time, and
+        // some systems (Linux) stamp files written within a few milliseconds with the same time.
+        env.card(B, U2, "Older card in B", "c2", 200);
         let other = "33333333-3333-4333-8333-333333333333";
         env.card(A, other, "Deleted in B", "c3", 100);
         fs::write(env.list_dir(B).join(format!("deleted_local_{other}")), "1760000000000").unwrap();

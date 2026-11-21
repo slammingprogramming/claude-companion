@@ -68,9 +68,9 @@ real machines and real accounts, and is listed at the end.
 1. **GUI and CLI parity.** Done. Every command has an app control and the other way round, apart
    from the differences in [the table below](#the-app-and-the-command-line-side-by-side).
 2. **Windows, macOS and Linux.** Written for all three and compile-checked for all three
-   (the engine and command line for Linux and macOS from a Windows machine; the app is built by the
-   release workflow on each). Only Windows has been run, and only read-only against a real Claude
-   setup (see *Still needs real-world testing*).
+   (the engine and command line tests run on Linux in a container; for macOS they are compile-checked
+   only; the app is built by the release workflow on each). Real Claude setups have only been used
+   on Windows, on copies (see *Still needs real-world testing*).
 3. **Rename and relicense.** Done: the project is Claude Companion, `AGPL-3.0-or-later`.
 4. **Features from two sibling projects**, re-implemented in Rust and credited. Done:
    - [claude-desktop-session-sync](https://github.com/RasmusKD/claude-desktop-session-sync):
@@ -94,7 +94,9 @@ real machines and real accounts, and is listed at the end.
   claude-switcher's research, tested on stand-in data only).
 - Sidebar-group sync: a real Claude opening a database this tool wrote.
 - Claude Code sign-in switching with a real sign-in.
-- Everything on macOS and Linux; the app on both has not been run.
+- The app on macOS and Linux, and everything on macOS. The engine and command-line tests have
+  been run on real Linux (a Debian container, as root and as an ordinary user) and pass; nothing has
+  been run on a Linux desktop with a real Claude.
 - Opening terminal windows on macOS and Linux.
 - Artwork: the icon and tray images are new; they have not yet been seen in a real tray, Dock or
   taskbar on each system, and `docs/images/` still holds cc-same's two old screenshots.
@@ -177,7 +179,7 @@ rather than all, accounts with several organizations in `chats copy`, and any `c
 ## Building from source
 
 ```bash
-cargo build --release                        # CLI (Rust 1.85+)
+cargo build --release                        # CLI (Rust 1.89+)
 cargo test                                   # engine + CLI tests
 cargo app                                    # run the app
 cargo app-test                               # app tests

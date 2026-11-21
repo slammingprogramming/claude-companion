@@ -19,6 +19,11 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
 
 ### Fixed
 
+- **The minimum Rust version is 1.89**, not the 1.85 the manifest, README and CI claimed: a locked
+  dependency (`uuid`) needs 1.89. Found by building on Linux in a container.
+- Two tests failed on Linux (not the product): one relied on file times that Linux does not tell
+  apart within a few milliseconds, the other on a read-only folder that root ignores. Both are
+  fixed, and the engine and command-line tests now pass on Linux, as root and as a normal user.
 - **Rewriting Claude Code's `.claude.json` no longer alters numbers.** The file holds long
   decimals (costs, timings); they used to come back one digit off in the last place after a
   switch, MCP share or settings change. Every JSON file this tool rewrites now keeps its numbers

@@ -11,7 +11,7 @@ edition = "2021"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/slammingprogramming/claude-companion"
 homepage = "https://github.com/slammingprogramming/claude-companion"
-rust-version = "1.85"
+rust-version = "1.89"
 
 [workspace.dependencies]
 claude-companion-core = { path = "crates/core" }
