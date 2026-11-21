@@ -127,7 +127,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           awk -v v="$version" '$1 == "##" && f { exit } $1 == "##" && $2 == v { f = 1; next } f' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
           grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md" || { echo "::error::CHANGELOG.md has no section for $version"; exit 1; }
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*
           body_path: ${{ runner.temp }}/notes.md
