@@ -6,7 +6,25 @@ under Settings › Updates.
 Versions up to 0.1.12 are the history of [cc-same](https://github.com/songkeys/cc-same) by
 Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0.1.12.
 
-## 0.2.0 - 2026-10-30
+## 0.2.1 - 2026-11-20
+
+### Changed
+
+- **New icon and tray artwork** (two overlapping window outlines with a prompt chevron), replacing
+  cc-same's rings, with the script that draws it all (`scripts/make-art.py`).
+- Switching accounts was checked against copies of a real Windows setup, not only stand-in data:
+  Claude Desktop's sign-in (63 files) went away on `add` and came back identical on `switch`, and
+  Claude Code's sign-in switched back and forth with its credentials byte for byte the same.
+  Nothing of the original was touched. Real Claude opening the results is still untested.
+
+### Fixed
+
+- **Rewriting Claude Code's `.claude.json` no longer alters numbers.** The file holds long
+  decimals (costs, timings); they used to come back one digit off in the last place after a
+  switch, MCP share or settings change. Every JSON file this tool rewrites now keeps its numbers
+  exactly (`float_roundtrip`).
+
+## 0.2.0 - 2026-11-20
 
 ### Added
 
@@ -97,8 +115,6 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
 
 ### Changed
 
-- **New icon and tray artwork** (two overlapping window outlines with a prompt chevron), replacing
-  cc-same's rings, with the script that draws it all (`scripts/make-art.py`).
 - **Claude Companion.** This is a hard fork of cc-same 0.1.12, renamed to Claude Companion. The
   command is `claude-companion`, settings and state live in a `claude-companion` folder, the
   environment variables start with `CLAUDE_COMPANION_`, and updates come from this project's

@@ -306,6 +306,7 @@ mod tests {
         let mut root = read_root(&e.ctx).unwrap();
         root.insert("oauthAccount".into(), json!({"accountUuid": uuid, "emailAddress": email}));
         root.insert("numStartups".into(), json!(3));
+        root.insert("lastCost".into(), json!(0.009441100000000001_f64));
         std::fs::write(&e.ctx.paths.claude_json, Value::Object(root).to_string()).unwrap();
     }
 
@@ -344,6 +345,9 @@ mod tests {
 
         // Everything else in the account file stays.
         assert_eq!(read_root(&e.ctx).unwrap()["numStartups"], json!(3));
+        // ...and numbers keep every digit they had: rewriting the file must not touch them.
+        let raw = std::fs::read_to_string(&e.ctx.paths.claude_json).unwrap();
+        assert!(raw.contains("0.009441100000000001"), "{raw}");
         // Already there: nothing to do.
         assert!(switch_to(&e.ctx, "bbbb").unwrap().current);
         assert!(switch_to(&e.ctx, "nobody").is_err());

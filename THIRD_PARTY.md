@@ -118,7 +118,7 @@ sidebar-group sync.
 | clap_builder | 4.6.7 | MIT OR Apache-2.0 | https://github.com/clap-rs/clap |
 | clap_derive | 4.6.7 | MIT OR Apache-2.0 | https://github.com/clap-rs/clap |
 | clap_lex | 1.1.1 | MIT OR Apache-2.0 | https://github.com/clap-rs/clap |
-| claude-companion-core | 0.2.0 | AGPL-3.0-or-later | https://github.com/slammingprogramming/claude-companion |
+| claude-companion-core | 0.2.1 | AGPL-3.0-or-later | https://github.com/slammingprogramming/claude-companion |
 | cocoa | 0.25.0 | MIT OR Apache-2.0 | https://github.com/servo/core-foundation-rs |
 | cocoa | 0.26.0 | MIT OR Apache-2.0 | https://github.com/servo/core-foundation-rs |
 | cocoa-foundation | 0.1.2 | MIT OR Apache-2.0 | https://github.com/servo/core-foundation-rs |
