@@ -192,11 +192,11 @@ pub fn quit(ctx: &Ctx, timeout: Duration, watch: &Watch) -> anyhow::Result<()> {
     // Where no request can quit Claude, a forced quit need not wait for one to be ignored.
     let force = watch.force || watch.forced_now();
     let patience = if force && cfg!(windows) { timeout.min(FORCE_AFTER) } else { timeout };
-    let result = wait_for_quit(process::any_running, &mut log, (patience, CONFIRM_TIMEOUT), watch);
+    let result = wait_for_quit(process::app_running, &mut log, (patience, CONFIRM_TIMEOUT), watch);
     let unanswered = result.as_ref().err().and_then(|e| e.downcast_ref::<NotReady>()) == Some(&NotReady::StillOpen);
     if force && unanswered {
         process::force_quit();
-        return wait_for_quit(process::any_running, &mut log, (FORCE_WAIT, FORCE_WAIT), &Watch::default());
+        return wait_for_quit(process::app_running, &mut log, (FORCE_WAIT, FORCE_WAIT), &Watch::default());
     }
     result
 }
@@ -452,12 +452,13 @@ mod process {
     /// Claude Desktop's main executable.
     #[cfg(target_os = "macos")]
     const MAIN: &[u8] = b"Claude.app/Contents/MacOS/Claude";
-    /// Where everything Claude Desktop runs lives: the app and its helpers.
+    /// Its helper apps (`Claude Helper.app`, `Claude Helper (Renderer).app`, …), which run with it:
+    /// the network service that writes its cookies is one of them.
     #[cfg(target_os = "macos")]
-    const BUNDLE: &[u8] = b"Claude.app/Contents/";
-    /// Squirrel's installer, which replaces the app during an update.
+    const HELPERS: &[u8] = b"Claude.app/Contents/Frameworks/Claude Helper";
+    /// The framework of Squirrel's installer (`ShipIt`), which replaces the app during an update.
     #[cfg(target_os = "macos")]
-    const UPDATER: &[u8] = b"Claude.app/Contents/Frameworks/Squirrel.framework/Resources/ShipIt";
+    const SQUIRREL: &[u8] = b"Claude.app/Contents/Frameworks/Squirrel.framework/";
 
     /// Process ids whose executable path `matches`; `None` when the table cannot be read.
     #[cfg(target_os = "macos")]
@@ -491,20 +492,36 @@ mod process {
         hay.windows(needle.len()).any(|w| w == needle)
     }
 
+    /// Claude itself: its main executable or one of its helpers. Not the other programs in its
+    /// bundle, which can outlive it and never touch its sign-in: its crash reporter (which can stay
+    /// behind for good once Claude has quit), its updater, the tool its Code sessions run in, the
+    /// Chrome extension's native host.
+    #[cfg(target_os = "macos")]
+    pub fn is_app(path: &[u8]) -> bool {
+        path.ends_with(MAIN) || contains(path, HELPERS)
+    }
+
+    /// Squirrel's installer, by the path the system gives (inside the framework's `Versions/A`)
+    /// or the short one.
+    #[cfg(target_os = "macos")]
+    pub fn is_updater(path: &[u8]) -> bool {
+        contains(path, SQUIRREL) && path.ends_with(b"/ShipIt")
+    }
+
     #[cfg(target_os = "macos")]
     pub fn desktop_running() -> Option<bool> {
         pids(|p| p.ends_with(MAIN)).map(|found| !found.is_empty())
     }
 
-    /// Claude or any of its helpers, but not its updater.
+    /// Claude or any of its helpers.
     #[cfg(target_os = "macos")]
-    pub fn any_running() -> bool {
-        pids(|p| contains(p, BUNDLE) && !p.ends_with(UPDATER)).is_none_or(|found| !found.is_empty())
+    pub fn app_running() -> bool {
+        pids(is_app).is_none_or(|found| !found.is_empty())
     }
 
     #[cfg(target_os = "macos")]
     pub fn updating() -> bool {
-        pids(|p| p.ends_with(UPDATER)).is_some_and(|found| !found.is_empty())
+        pids(is_updater).is_some_and(|found| !found.is_empty())
     }
 
     /// SIGTERM: Electron quits the way it does from the Dock or the menu, without the
@@ -537,7 +554,7 @@ mod process {
     }
 
     #[cfg(not(target_os = "macos"))]
-    pub fn any_running() -> bool {
+    pub fn app_running() -> bool {
         desktop_running().unwrap_or(true)
     }
 
@@ -990,5 +1007,27 @@ mod tests {
         // Claude started a new log.
         fs::write(&path, "x\n").unwrap();
         assert_eq!(log.read(), None);
+    }
+
+    /// The paths macOS gives for what Claude Desktop 4 runs.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn only_claude_and_its_helpers_keep_a_switch_waiting() {
+        let at = |p: &str| format!("/Applications/Claude.app/Contents/{p}");
+        let app = |p: &str| process::is_app(at(p).as_bytes());
+        assert!(app("MacOS/Claude"));
+        assert!(app("Frameworks/Claude Helper.app/Contents/MacOS/Claude Helper"));
+        assert!(app("Frameworks/Claude Helper (Renderer).app/Contents/MacOS/Claude Helper (Renderer)"));
+        // These can keep running once Claude has quit, and never touch its sign-in.
+        assert!(!app("Frameworks/Electron Framework.framework/Versions/A/Helpers/chrome_crashpad_handler"));
+        assert!(!app("Helpers/disclaimer"));
+        assert!(!app("Helpers/chrome-native-host"));
+        assert!(!app("Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt"));
+        // The updater, by its real path or the short one, and only Claude's.
+        assert!(process::is_updater(at("Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt").as_bytes()));
+        assert!(process::is_updater(at("Frameworks/Squirrel.framework/Resources/ShipIt").as_bytes()));
+        let other =
+            b"/Applications/GitHub Desktop.app/Contents/Frameworks/Squirrel.framework/Versions/A/Resources/ShipIt";
+        assert!(!process::is_updater(other));
     }
 }

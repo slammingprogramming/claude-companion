@@ -3,8 +3,29 @@
 What changed in each version of Claude Companion. The app shows these notes after it updates, and
 under Settings › Updates.
 
-Versions up to 0.1.12 are the history of [cc-same](https://github.com/songkeys/cc-same) by
-Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0.1.12.
+Versions up to 0.1.13 are the history of [cc-same](https://github.com/songkeys/cc-same) by
+Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0.1.12 and merged
+0.1.13 afterwards.
+
+## Unreleased
+
+### Changed
+
+- **Merged upstream cc-same 0.1.13.** Switching from the window or the menu bar now opens Claude
+  even if it was closed (`claude-companion switch` still leaves a closed Claude closed), and the
+  confirmation says so.
+
+### Security
+
+- **rustls 0.23.46** in the app (four Dependabot advisories: session Debug output exposing TLS
+  secrets, Brotli certificate decompression memory, ECH rejection, and a key-exchange poisoning case).
+
+### Fixed
+
+- **macOS: switching accounts could stop at "Switching...".** Claude's crash reporter can keep
+  running after Claude quits, and the switch waited for it. It now waits for Claude and its
+  helpers only, waits for Claude's updater to finish, and opens Claude again if a switch fails
+  after Claude quit. (From upstream 0.1.13; not testable on Windows, so unverified here.)
 
 ## 0.2.1 - 2026-11-20
 
@@ -128,6 +149,23 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
 - **New license: AGPL-3.0-or-later.** The inherited code stays available under its original MIT
   terms upstream; its notices are kept in `LICENSES/`, and `NOTICE.md` credits every project this
   one builds on.
+
+## 0.1.13 - 2026-11-03
+
+### Changed
+
+- **Switching opens Claude.** Switching from the window or the menu bar restarted Claude only when
+  it was open: with Claude closed, it changed the sign-in and left Claude closed. Now Claude opens
+  on the new account either way. `cc-same switch` still leaves a closed Claude closed.
+
+### Fixed
+
+- **macOS: switching accounts could stop at "Switching…".** CC Same waited for every program in
+  Claude's app to exit, and Claude's crash reporter can keep running after Claude quits. Claude
+  closed, nothing happened for a minute, then the switch gave up and left Claude closed. CC Same
+  now waits for Claude and its helpers only, and a switch that fails after Claude quit opens
+  Claude again. Claude's updater went unnoticed too; a switch now waits for an update to finish
+  before touching Claude's files.
 
 ## 0.1.12 - 2026-10-28
 

@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # The engine and command line (the root workspace).
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      cargo-root:
+        patterns: ["*"]
+    labels: [dependencies, rust]
+  # The desktop app (its own workspace; GPUI Kit pins the GPUI release, so it moves with GPUI Kit).
+  - package-ecosystem: cargo
+    directory: /crates/app
+    schedule:
+      interval: weekly
+    groups:
+      cargo-app:
+        patterns: ["*"]
+        # GPUI Kit is pinned exactly; bump it by hand together with its GPUI release.
+        exclude-patterns: ["gpui-kit"]
+    ignore:
+      - dependency-name: gpui-kit
+    labels: [dependencies, rust]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies, github-actions]
