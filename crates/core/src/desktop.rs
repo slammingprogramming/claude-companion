@@ -536,7 +536,7 @@ mod process {
     /// SIGKILL: only when asking did not work and the person chose to force it.
     #[cfg(target_os = "macos")]
     pub fn force_quit() {
-        for pid in pids(|p| contains(p, BUNDLE) && !p.ends_with(UPDATER)).unwrap_or_default() {
+        for pid in pids(is_app).unwrap_or_default() {
             unsafe { libc::kill(pid, libc::SIGKILL) };
         }
     }
