@@ -151,6 +151,11 @@ pub fn temporary_place(_path: &Path) -> bool {
 
 // ---------------------------------------------------------------------- asking GitHub
 
+/// A digest in lowercase hex (the hash types no longer format themselves with `{:x}`).
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
 fn client(timeout: Duration) -> anyhow::Result<reqwest::blocking::Client> {
     // ring does the cryptography; installing it a second time changes nothing.
     let _ = rustls::crypto::ring::default_provider().install_default();
@@ -266,7 +271,7 @@ pub fn download(asset: &Asset, dir: &Path, progress: &AtomicU64) -> Outcome<Path
         return Err(Failure::new(Problem::Offline, error));
     }
     if let Some(expected) = &asset.sha256 {
-        let actual = format!("{:x}", hasher.finalize());
+        let actual = hex(hasher.finalize().as_slice());
         if actual != *expected {
             let error = anyhow!("{} has the SHA-256 {actual}, not {expected}", asset.name);
             return Err(Failure::new(Problem::Unverified, error));
@@ -830,7 +835,7 @@ mod tests {
     #[test]
     fn downloads_are_checked_for_size_and_digest() {
         let body = b"the new version".to_vec();
-        let digest = format!("{:x}", Sha256::digest(&body));
+        let digest = hex(Sha256::digest(&body).as_slice());
         let dir = tempfile::tempdir().unwrap();
         let fetch = |sha256: &str, size: u64| {
             let asset =

@@ -8,6 +8,11 @@ updates:
     groups:
       cargo-root:
         patterns: ["*"]
+    # rusty-leveldb reads and writes Claude's own sidebar-group database (groups.rs). Its 4.x line
+    # is not checked against a real Claude yet, so it moves by hand, not by pull request.
+    ignore:
+      - dependency-name: rusty-leveldb
+        update-types: ["version-update:semver-major"]
     labels: [dependencies, rust]
   # The desktop app (its own workspace; GPUI Kit pins the GPUI release, so it moves with GPUI Kit).
   - package-ecosystem: cargo
@@ -21,6 +26,8 @@ updates:
         exclude-patterns: ["gpui-kit"]
     ignore:
       - dependency-name: gpui-kit
+      - dependency-name: rusty-leveldb
+        update-types: ["version-update:semver-major"]
     labels: [dependencies, rust]
   - package-ecosystem: github-actions
     directory: /

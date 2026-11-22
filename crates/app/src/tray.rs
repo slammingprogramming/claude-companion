@@ -266,10 +266,13 @@ mod platform {
                 &PredefinedMenuItem::separator(),
                 &quit,
             ])?;
-            let icon = TrayIconBuilder::new()
-                .with_tooltip(status.tooltip())
-                .with_icon(icon(status.attention)?)
-                .with_icon_as_template(cfg!(target_os = "macos"))
+            let builder = TrayIconBuilder::new().with_tooltip(status.tooltip());
+            // The menu bar recolours a template icon (its alpha channel only) to suit light and dark.
+            #[cfg(target_os = "macos")]
+            let builder = builder.with_icon_templated(icon(status.attention)?);
+            #[cfg(not(target_os = "macos"))]
+            let builder = builder.with_icon(icon(status.attention)?);
+            let icon = builder
                 .with_menu(Box::new(menu))
                 // A menu bar item opens its menu on click; a Windows tray icon opens the app.
                 .with_menu_on_left_click(cfg!(target_os = "macos"))
@@ -362,7 +365,10 @@ mod platform {
             if last.attention != status.attention
                 && let Ok(image) = icon(status.attention)
             {
-                let _ = self.icon.set_icon_with_as_template(Some(image), cfg!(target_os = "macos"));
+                #[cfg(target_os = "macos")]
+                let _ = self.icon.set_icon_templated(Some(image));
+                #[cfg(not(target_os = "macos"))]
+                let _ = self.icon.set_icon(Some(image));
             }
             *last = status.clone();
         }
