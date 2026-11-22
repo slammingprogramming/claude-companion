@@ -502,16 +502,32 @@ impl UniApp {
             .bg(gpui_kit::transparent_black())
             .border_color(gpui_kit::transparent_black())
             .child(
-                h_flex().w_full().justify_end().pr_2().child(
-                    Button::new("open-settings")
-                        .ghost()
-                        .small()
-                        .icon(IconName::Settings2)
-                        .tooltip(t("settings.title"))
-                        // Keep Windows' native caption hit-test off this button.
-                        .when(cfg!(windows), |button| button.occlude())
-                        .on_click(cx.listener(|this, _, window, cx| this.open_settings(window, cx))),
-                ),
+                h_flex()
+                    .w_full()
+                    .justify_end()
+                    .gap_0p5()
+                    .pr_2()
+                    .child(
+                        Button::new("open-history")
+                            .ghost()
+                            .small()
+                            .icon(Icon::empty().path("icons/chart-line.svg"))
+                            .tooltip(t("history.title"))
+                            .when(cfg!(windows), |button| button.occlude())
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                crate::usage_view::open(this.store.clone(), window, cx)
+                            })),
+                    )
+                    .child(
+                        Button::new("open-settings")
+                            .ghost()
+                            .small()
+                            .icon(IconName::Settings2)
+                            .tooltip(t("settings.title"))
+                            // Keep Windows' native caption hit-test off this button.
+                            .when(cfg!(windows), |button| button.occlude())
+                            .on_click(cx.listener(|this, _, window, cx| this.open_settings(window, cx))),
+                    ),
             )
             .into_any_element()
     }

@@ -23,6 +23,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 # Longbridge's GPUI Kit: components, theming and the GPUI release they are built against.
 gpui-kit = "=0.7.0"
 image = { version = "0.25", default-features = false, features = ["png"] }

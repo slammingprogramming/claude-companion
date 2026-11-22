@@ -136,6 +136,11 @@ impl Paths {
     pub fn usage_history(&self) -> PathBuf {
         self.user_data.join("plan-usage-history.json")
     }
+
+    /// Our own long-term record of usage (see [`crate::history`]).
+    pub fn history_db(&self) -> PathBuf {
+        self.state_dir.join("usage-history.sqlite")
+    }
 }
 
 /// Claude Code's system directory for managed settings.

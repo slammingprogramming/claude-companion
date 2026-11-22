@@ -363,12 +363,49 @@ fn tokens(usage: &Value, key: &str) -> u64 {
     usage.get(key).and_then(Value::as_u64).unwrap_or(0)
 }
 
-/// Count the replies in every transcript under `roots` once each, however many files a streamed
-/// reply was written to.
-pub fn usage_stats(roots: &[PathBuf]) -> Stats {
-    use chrono::{Local, TimeZone as _};
-    let mut st = Stats::default();
-    let mut seen: HashSet<String> = HashSet::new();
+/// One reply of Claude's in a transcript.
+struct Reply {
+    /// The message id (or request id), the same in every file a streamed reply was written to.
+    id: String,
+    model: String,
+    cwd: String,
+    ms: Option<i64>,
+    usage: Usage,
+}
+
+/// The reply on one transcript line, if the line is one.
+fn reply(raw: &[u8]) -> Option<Reply> {
+    // Cheap skip of tool results and bookkeeping before parsing.
+    if !raw.windows(ASSISTANT_TAG.len()).any(|w| w == ASSISTANT_TAG) {
+        return None;
+    }
+    let l = serde_json::from_slice::<Value>(raw).ok()?;
+    let msg = l.get("message").unwrap_or(&Value::Null);
+    if text(&l, "type") != "assistant" || text(msg, "model") == SYNTHETIC {
+        return None;
+    }
+    let id = match text(msg, "id") {
+        "" => text(&l, "requestId"),
+        id => id,
+    };
+    let u = msg.get("usage").unwrap_or(&Value::Null);
+    Some(Reply {
+        id: id.to_string(),
+        model: text(msg, "model").to_string(),
+        cwd: text(&l, "cwd").to_string(),
+        ms: millis(text(&l, "timestamp")),
+        usage: Usage {
+            input: tokens(u, "input_tokens"),
+            output: tokens(u, "output_tokens"),
+            cache_write: tokens(u, "cache_creation_input_tokens"),
+            cache_read: tokens(u, "cache_read_input_tokens"),
+            messages: 1,
+        },
+    })
+}
+
+/// Every transcript file under `roots` (`<root>/<project>/<session>.jsonl`), in path order.
+fn transcript_files(roots: &[PathBuf]) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = Vec::new();
     for root in roots {
         for proj in fs::read_dir(root).into_iter().flatten().flatten() {
@@ -383,41 +420,70 @@ pub fn usage_stats(roots: &[PathBuf]) -> Stats {
         }
     }
     paths.sort();
-    for path in paths {
+    paths
+}
+
+/// Tokens of one model in one project on one local day (`YYYY-MM-DD`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DayRow {
+    pub day: String,
+    pub model: String,
+    pub project: String,
+    pub usage: Usage,
+}
+
+/// What the transcripts under `roots` add up to for each day, model and project, counting each
+/// reply once however many files it was written to. Replies without a time are left out.
+///
+/// With `modified_since`, only the files changed since then are read, and the figures for a day
+/// that also has older files can be lower than the truth: keep the highest figure ever seen for a
+/// day (the history does) and read everything the first time. Returns the rows and how many files
+/// were read.
+pub fn usage_rows(roots: &[PathBuf], modified_since: Option<std::time::SystemTime>) -> (Vec<DayRow>, usize) {
+    use chrono::{Local, TimeZone as _};
+    let mut seen: HashSet<String> = HashSet::new();
+    let mut rows: BTreeMap<(String, String, String), Usage> = BTreeMap::new();
+    let mut read = 0;
+    for path in transcript_files(roots) {
+        if let Some(since) = modified_since {
+            if fs::metadata(&path).and_then(|m| m.modified()).is_ok_and(|m| m < since) {
+                continue;
+            }
+        }
+        let Ok(bytes) = fs::read(&path) else { continue };
+        read += 1;
+        for r in bytes.split(|b| *b == b'\n').filter_map(reply) {
+            if !r.id.is_empty() && !seen.insert(r.id.clone()) {
+                continue;
+            }
+            let Some(local) = r.ms.and_then(|t| Local.timestamp_millis_opt(t).single()) else { continue };
+            rows.entry((local.format("%Y-%m-%d").to_string(), r.model, r.cwd)).or_default().add(&r.usage);
+        }
+    }
+    let rows = rows.into_iter().map(|((day, model, project), usage)| DayRow { day, model, project, usage });
+    (rows.collect(), read)
+}
+
+/// Count the replies in every transcript under `roots` once each, however many files a streamed
+/// reply was written to.
+pub fn usage_stats(roots: &[PathBuf]) -> Stats {
+    use chrono::{Local, TimeZone as _};
+    let mut st = Stats::default();
+    let mut seen: HashSet<String> = HashSet::new();
+    for path in transcript_files(roots) {
         let Ok(bytes) = fs::read(&path) else { continue };
         st.files += 1;
         let mut any = false;
-        for raw in bytes.split(|b| *b == b'\n') {
-            // Cheap skip of tool results and bookkeeping before parsing.
-            if !raw.windows(ASSISTANT_TAG.len()).any(|w| w == ASSISTANT_TAG) {
-                continue;
-            }
-            let Ok(l) = serde_json::from_slice::<Value>(raw) else { continue };
-            let msg = l.get("message").unwrap_or(&Value::Null);
-            if text(&l, "type") != "assistant" || text(msg, "model") == SYNTHETIC {
-                continue;
-            }
-            let id = match text(msg, "id") {
-                "" => text(&l, "requestId"),
-                id => id,
-            };
-            if !id.is_empty() && !seen.insert(id.to_string()) {
+        for r in bytes.split(|b| *b == b'\n').filter_map(reply) {
+            if !r.id.is_empty() && !seen.insert(r.id.clone()) {
                 continue;
             }
             any = true;
-            let u = msg.get("usage").unwrap_or(&Value::Null);
-            let usage = Usage {
-                input: tokens(u, "input_tokens"),
-                output: tokens(u, "output_tokens"),
-                cache_write: tokens(u, "cache_creation_input_tokens"),
-                cache_read: tokens(u, "cache_read_input_tokens"),
-                messages: 1,
-            };
-            st.by_model.entry(text(msg, "model").to_string()).or_default().add(&usage);
-            st.by_project.entry(text(&l, "cwd").to_string()).or_default().add(&usage);
-            if let Some(t) = millis(text(&l, "timestamp")) {
+            st.by_model.entry(r.model.clone()).or_default().add(&r.usage);
+            st.by_project.entry(r.cwd.clone()).or_default().add(&r.usage);
+            if let Some(t) = r.ms {
                 if let Some(local) = Local.timestamp_millis_opt(t).single() {
-                    st.by_day.entry(local.format("%Y-%m-%d").to_string()).or_default().add(&usage);
+                    st.by_day.entry(local.format("%Y-%m-%d").to_string()).or_default().add(&r.usage);
                 }
                 st.first_ms = Some(st.first_ms.map_or(t, |f| f.min(t)));
                 st.last_ms = Some(st.last_ms.map_or(t, |f| f.max(t)));
@@ -659,6 +725,21 @@ mod tests {
         assert_eq!(st.total().total(), 1115);
         assert_eq!(st.by_project["/work/app"].messages, 1);
         assert_eq!(st.by_day.len(), 1);
+    }
+
+    #[test]
+    fn rows_are_per_day_model_and_project_and_only_changed_files_are_read_again() {
+        let tmp = tempfile::tempdir().unwrap();
+        write(&tmp.path().join("a"), "1.jsonl", &sample());
+        write(&tmp.path().join("b"), "2.jsonl", &sample());
+        let roots = [tmp.path().to_path_buf()];
+        let (rows, files) = usage_rows(&roots, None);
+        assert_eq!(files, 2);
+        assert_eq!(rows.len(), 1, "one reply, counted once: {rows:?}");
+        assert_eq!((rows[0].model.as_str(), rows[0].project.as_str()), ("claude-opus-5-5", "/work/app"));
+        assert_eq!(rows[0].usage.total(), 1115);
+        let tomorrow = std::time::SystemTime::now() + std::time::Duration::from_secs(86_400);
+        assert_eq!(usage_rows(&roots, Some(tomorrow)), (Vec::new(), 0), "nothing changed since tomorrow");
     }
 
     #[test]

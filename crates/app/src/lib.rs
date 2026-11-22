@@ -21,6 +21,7 @@ pub mod theme;
 mod tools;
 mod tray;
 pub mod update;
+mod usage_view;
 pub mod view;
 
 use crate::store::Store;

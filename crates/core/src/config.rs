@@ -49,6 +49,11 @@ pub struct Config {
     /// Desktop app: download new versions in the background and install them while the window
     /// is closed.
     pub auto_update: bool,
+    /// Keep our own record of plan use and token counts, past what Desktop and Claude Code keep.
+    pub history: bool,
+    /// How many days of that record to keep; 0 keeps it for as long as the user does.
+    #[serde(deserialize_with = "de_days")]
+    pub history_keep_days: u32,
 }
 
 impl Default for Config {
@@ -68,6 +73,8 @@ impl Default for Config {
             dock: false,
             check_updates: true,
             auto_update: true,
+            history: true,
+            history_keep_days: 730,
         }
     }
 }
@@ -99,6 +106,10 @@ impl Config {
 
 fn de_number<'de, D: Deserializer<'de>>(d: D) -> Result<f64, D::Error> {
     Ok(Value::deserialize(d)?.as_f64().unwrap_or(0.0))
+}
+
+fn de_days<'de, D: Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+    Ok(Value::deserialize(d)?.as_f64().map(|n| n.clamp(0.0, 36_500.0) as u32).unwrap_or(730))
 }
 
 fn de_count<'de, D: Deserializer<'de>>(d: D) -> Result<usize, D::Error> {

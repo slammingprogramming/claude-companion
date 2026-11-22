@@ -21,6 +21,8 @@ clap = { version = "4.5", features = ["derive", "env"] }
 dirs = "7"
 libc = "0.2"
 reflink-copy = "0.1"
+# The usage history: a local SQLite file, built from the bundled C source so nothing is installed.
+rusqlite = { version = "0.37", features = ["bundled"] }
 rusty-leveldb = "3"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }

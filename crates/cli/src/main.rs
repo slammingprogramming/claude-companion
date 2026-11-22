@@ -7,6 +7,7 @@
 
 mod chats_cmd;
 mod code_cmd;
+mod history_cmd;
 
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -47,6 +48,45 @@ struct Cli {
     verbose: bool,
     #[command(subcommand)]
     cmd: Option<Cmd>,
+}
+
+#[derive(Subcommand)]
+enum HistoryCmd {
+    /// What is kept, each account's highest plan use and the tokens used lately (the default)
+    Show {
+        /// How many days back to add up
+        #[arg(long, default_value_t = 30)]
+        days: u32,
+        #[arg(long)]
+        json: bool,
+    },
+    /// Read what Claude has now into the history (the background agent and the app do this too)
+    Collect,
+    /// Start keeping the history
+    On,
+    /// Stop adding to the history; what was kept stays
+    Off,
+    /// How long to keep it: a number of days, or `forever`
+    Keep { how_long: String },
+    /// Write one table as CSV, to a file or the terminal
+    Export {
+        table: HistoryTable,
+        /// Where to write it; without one, the terminal
+        out: Option<PathBuf>,
+    },
+    /// Delete the whole history
+    Clear {
+        #[arg(short, long)]
+        yes: bool,
+    },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+pub enum HistoryTable {
+    /// Every plan reading, with its account
+    Plan,
+    /// Tokens by day, model and folder
+    Tokens,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -346,6 +386,11 @@ enum Cmd {
         #[command(subcommand)]
         cmd: ChatsCmd,
     },
+    /// Your own long-term record of plan use and tokens, kept past what Claude keeps
+    History {
+        #[command(subcommand)]
+        cmd: Option<HistoryCmd>,
+    },
     /// Tokens used by model, day and folder, counted from Claude Code's local transcripts
     Stats {
         #[arg(long)]
@@ -514,6 +559,15 @@ fn run(cli: Cli) -> Result<()> {
             ChatsCmd::Rescue { ids, to, yes } => chats_cmd::rescue(&ctx, &ids, &to, yes),
             ChatsCmd::Copy { ids, from, to, yes } => chats_cmd::copy(&ctx, &ids, &from, &to, yes),
             ChatsCmd::Export { chat, format, out } => chats_cmd::export(&ctx, &chat, format, out),
+        },
+        Cmd::History { cmd } => match cmd.unwrap_or(HistoryCmd::Show { days: 30, json: false }) {
+            HistoryCmd::Show { days, json } => history_cmd::show(&ctx, days, json),
+            HistoryCmd::Collect => history_cmd::collect(&ctx),
+            HistoryCmd::On => history_cmd::switch(&ctx, true),
+            HistoryCmd::Off => history_cmd::switch(&ctx, false),
+            HistoryCmd::Keep { how_long } => history_cmd::keep(&ctx, &how_long),
+            HistoryCmd::Export { table, out } => history_cmd::export(&ctx, table, out),
+            HistoryCmd::Clear { yes } => history_cmd::clear(&ctx, yes),
         },
         Cmd::Stats { json } => chats_cmd::stats(&ctx, json),
         Cmd::Code { cmd } => match cmd {

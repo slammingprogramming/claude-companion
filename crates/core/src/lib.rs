@@ -33,6 +33,7 @@ pub mod desktop;
 pub mod diagnose;
 pub mod fsx;
 pub mod groups;
+pub mod history;
 pub mod logins;
 pub mod mcp;
 pub mod merge;

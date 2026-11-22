@@ -11,6 +11,16 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
 
 ### Added
 
+- **Usage history.** Claude Desktop keeps its plan-usage readings for 30 days and Claude Code
+  deletes old transcripts; Claude Companion now copies both into a local SQLite database
+  (`usage-history.sqlite` in its state folder) and keeps them for as long as you choose (2 years by
+  default, or forever). The chart icon in the title bar (and Settings › Tools › *Usage history*)
+  opens graphs of every account side by side (5-hour and weekly plan use, daily peaks), tokens per
+  day, by model and by folder, with a switch to stop collecting, how long to keep, CSV export and
+  *Delete*. The background agent and the app collect it; on the command line it is
+  `claude-companion history` (`collect`, `keep <days|forever>`, `export plan|tokens`, `on`, `off`,
+  `clear`). Plan readings are attributed to accounts by organization; tokens come from the
+  transcripts all accounts share, so they are totals. Nothing leaves the computer.
 - **Seventeen more interface languages**, bringing the total to 27: Italian, Dutch, Polish,
   Turkish, Ukrainian, Swedish, Danish, Norwegian Bokmål, Finnish, Czech, Hungarian, Romanian, Greek,
   Indonesian, Vietnamese, Thai and Hindi. They are machine translations, so wording may be off;

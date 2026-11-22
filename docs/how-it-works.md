@@ -300,6 +300,32 @@ in the list. Other samples are attributed by organization: one used by a single 
 it (from what was noted, else from the session folders). An organization several accounts share,
 such as a team, is left out rather than guessed.
 
+### Usage history
+
+Both sources of usage forget: Desktop keeps `plan-usage-history.json` for 30 days, and Claude Code
+deletes old transcripts (`cleanupPeriodDays`). Claude Companion copies them into its own SQLite
+file, `usage-history.sqlite` in its state folder, so they can be kept as long as the user wants.
+The background agent does it every five minutes on a thread of its own, and the app does it when
+the history sheet opens; either one, or the command line (`history collect`), gives the same result.
+
+* **Plan readings** are keyed by time and organization, so reading the same file again adds
+  nothing. Each is stored with the account that owns its organization (the attribution described
+  above); a reading taken before the owner was known is attributed later. Readings of an
+  organization several accounts share stay unattributed.
+* **Tokens** are counted from the transcripts the way `stats` counts them (each reply once, however
+  many files it was written to) and kept per local day, model and project folder. Transcripts are
+  shared by all accounts, so these are totals, not per-account figures. The first count reads every
+  transcript; after that only files changed since the last count (with a day's margin) are read.
+  A day's kept figure never goes down: when Claude Code deletes old transcripts, the recount of that
+  day is lower than what was kept, and the larger value wins.
+* **Keeping.** `historyKeepDays` in the configuration (730 by default; 0 keeps everything) trims
+  older rows once a day; `history` turns collecting off (what was kept stays). Nothing is ever
+  deleted other than by that limit or an explicit *Delete* (`history clear`).
+
+The app's graphs compare accounts as one line each (daily peak of the 5-hour and weekly percent,
+grouped by week or month for long ranges, with the weekly level carried across idle days for up
+to a week), then tokens per day, by model and by folder.
+
 ## Sidebar groups
 
 *Opt-in (`config --groups on`). A Rust port of the group merge in

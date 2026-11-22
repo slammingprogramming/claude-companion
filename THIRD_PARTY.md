@@ -6,13 +6,14 @@ pick; we use the permissive option where there is one). The list covers every pl
 dependencies of the command-line tool and the desktop app, and is generated from `Cargo.lock`
 with `cargo metadata`; regenerate it when dependencies change.
 
-913 packages.
+920 packages.
 
 Notes: `claude-companion-core` is this project's own engine (the app's workspace depends on it by
 path). The few MPL-2.0 crates (`cbindgen`, `dwrote`, `option-ext`) are used unmodified, as
 libraries, which MPL-2.0 permits inside an AGPL-3.0-or-later work. `self_cell` is dual-licensed
 and used under Apache-2.0. `rusty-leveldb` (MIT) reads and writes Claude's Local Storage for the
-sidebar-group sync.
+sidebar-group sync. `rusqlite` (MIT) and the SQLite it bundles (public domain) keep the
+usage history.
 
 | Crate | Version | License | Source |
 | --- | --- | --- | --- |
@@ -114,9 +115,9 @@ sidebar-group sync.
 | chrono | 0.4.45 | MIT OR Apache-2.0 | https://github.com/chronotope/chrono |
 | cipher | 0.4.4 | MIT OR Apache-2.0 | https://github.com/RustCrypto/traits |
 | clang-sys | 1.9.1 | Apache-2.0 | https://github.com/KyleMayes/clang-sys |
-| clap | 4.6.7 | MIT OR Apache-2.0 | https://github.com/clap-rs/clap |
+| clap | 4.6.8 | MIT OR Apache-2.0 | https://github.com/clap-rs/clap |
 | clap_builder | 4.6.7 | MIT OR Apache-2.0 | https://github.com/clap-rs/clap |
-| clap_derive | 4.6.7 | MIT OR Apache-2.0 | https://github.com/clap-rs/clap |
+| clap_derive | 4.6.8 | MIT OR Apache-2.0 | https://github.com/clap-rs/clap |
 | clap_lex | 1.1.1 | MIT OR Apache-2.0 | https://github.com/clap-rs/clap |
 | claude-companion-core | 0.2.3 | AGPL-3.0-or-later | https://github.com/slammingprogramming/claude-companion |
 | cocoa | 0.25.0 | MIT OR Apache-2.0 | https://github.com/servo/core-foundation-rs |
@@ -172,6 +173,7 @@ sidebar-group sync.
 | digest | 0.11.3 | MIT OR Apache-2.0 | https://github.com/RustCrypto/traits |
 | dirs | 5.0.1 | MIT OR Apache-2.0 | https://github.com/soc/dirs-rs |
 | dirs | 6.0.0 | MIT OR Apache-2.0 | https://github.com/soc/dirs-rs |
+| dirs | 7.0.0 | MIT OR Apache-2.0 | https://codeberg.org/dirs/dirs-rs |
 | dirs-sys | 0.4.1 | MIT OR Apache-2.0 | https://github.com/dirs-dev/dirs-sys-rs |
 | dirs-sys | 0.5.0 | MIT OR Apache-2.0 | https://github.com/dirs-dev/dirs-sys-rs |
 | dispatch | 0.2.0 | MIT | http://github.com/SSheldon/rust-dispatch |
@@ -185,7 +187,7 @@ sidebar-group sync.
 | dwrote | 0.11.5 | MPL-2.0 | https://github.com/servo/dwrote-rs |
 | dyn-clone | 1.0.20 | MIT OR Apache-2.0 | https://github.com/dtolnay/dyn-clone |
 | either | 1.18.0 | MIT OR Apache-2.0 | https://github.com/rayon-rs/either |
-| embed-resource | 3.0.11 | MIT | https://github.com/nabijaczleweli/rust-embed-resource |
+| embed-resource | 3.0.12 | MIT | https://github.com/nabijaczleweli/rust-embed-resource |
 | encoding_rs | 0.8.42 | (Apache-2.0 OR MIT) AND BSD-3-Clause | https://github.com/hsivonen/encoding_rs |
 | encoding_rs_io | 0.1.8 | MIT OR Apache-2.0 | https://github.com/BurntSushi/encoding_rs_io |
 | endi | 1.1.1 | MIT | https://github.com/zeenix/endi |
@@ -206,6 +208,8 @@ sidebar-group sync.
 | event-listener | 5.4.2 | Apache-2.0 OR MIT | https://github.com/smol-rs/event-listener |
 | event-listener-strategy | 0.5.4 | Apache-2.0 OR MIT | https://github.com/smol-rs/event-listener-strategy |
 | exr | 1.74.2 | BSD-3-Clause | https://github.com/johannesvollmer/exrs |
+| fallible-iterator | 0.3.0 | MIT/Apache-2.0 | https://github.com/sfackler/rust-fallible-iterator |
+| fallible-streaming-iterator | 0.1.9 | MIT/Apache-2.0 | https://github.com/sfackler/fallible-streaming-iterator |
 | fastrand | 2.5.0 | Apache-2.0 OR MIT | https://github.com/smol-rs/fastrand |
 | fax | 0.2.7 | MIT | https://github.com/pdf-rs/fax |
 | fdeflate | 0.3.7 | MIT OR Apache-2.0 | https://github.com/image-rs/fdeflate |
@@ -299,6 +303,7 @@ sidebar-group sync.
 | hashbrown | 0.15.5 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown |
 | hashbrown | 0.16.1 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown |
 | hashbrown | 0.17.1 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown |
+| hashlink | 0.10.0 | MIT OR Apache-2.0 | https://github.com/kyren/hashlink |
 | heapless | 0.9.3 | MIT OR Apache-2.0 | https://github.com/rust-embedded/heapless |
 | heck | 0.4.1 | MIT OR Apache-2.0 | https://github.com/withoutboats/heck |
 | heck | 0.5.0 | MIT OR Apache-2.0 | https://github.com/withoutboats/heck |
@@ -357,12 +362,12 @@ sidebar-group sync.
 | jni-sys-macros | 0.4.1 | MIT OR Apache-2.0 | https://github.com/jni-rs/jni-sys |
 | jobserver | 0.1.35 | MIT OR Apache-2.0 | https://github.com/rust-lang/jobserver-rs |
 | js-sys | 0.3.106 | MIT OR Apache-2.0 | https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/js-sys |
-| keyboard-types | 0.7.0 | MIT OR Apache-2.0 | https://github.com/pyfisch/keyboard-types |
+| keyboard-types | 0.8.3 | MIT OR Apache-2.0 | https://github.com/rust-windowing/keyboard-types |
 | khronos-egl | 6.0.0 | MIT/Apache-2.0 | https://github.com/timothee-haudebourg/khronos-egl |
 | khronos_api | 3.1.0 | Apache-2.0 | https://github.com/brendanzab/gl-rs/ |
 | kqueue | 1.2.1 | MIT | https://gitlab.com/rust-kqueue/rust-kqueue |
 | kqueue-sys | 1.1.2 | MIT | https://gitlab.com/rust-kqueue/rust-kqueue-sys |
-| ksni | 0.3.6 | Unlicense | https://github.com/iovxw/ksni |
+| ksni | 0.3.7 | Unlicense | https://github.com/iovxw/ksni |
 | kurbo | 0.11.3 | Apache-2.0 OR MIT | https://github.com/linebender/kurbo |
 | kurbo | 0.13.1 | Apache-2.0 OR MIT | https://github.com/linebender/kurbo |
 | lazy_static | 1.5.0 | MIT OR Apache-2.0 | https://github.com/rust-lang-nursery/lazy-static.rs |
@@ -370,11 +375,12 @@ sidebar-group sync.
 | leaky-cow | 0.1.1 | MIT / Apache-2.0 | https://github.com/notriddle/rust-leaky-cow |
 | lebe | 0.5.3 | BSD-3-Clause | https://github.com/johannesvollmer/lebe |
 | libbz2-rs-sys | 0.2.5 | bzip2-1.0.6 | https://github.com/trifectatechfoundation/libbzip2-rs |
-| libc | 0.2.189 | MIT OR Apache-2.0 | https://github.com/rust-lang/libc |
+| libc | 0.2.191 | MIT OR Apache-2.0 | https://github.com/rust-lang/libc |
 | libfuzzer-sys | 0.4.13 | (MIT OR Apache-2.0) AND NCSA | https://github.com/rust-fuzz/libfuzzer |
 | libloading | 0.8.9 | ISC | https://github.com/nagisa/rust_libloading/ |
 | libm | 0.2.16 | MIT | https://github.com/rust-lang/compiler-builtins |
 | libredox | 0.1.25 | MIT | https://gitlab.redox-os.org/redox-os/libredox.git |
+| libsqlite3-sys | 0.35.0 | MIT | https://github.com/rusqlite/rusqlite |
 | linebender_resource_handle | 0.1.1 | Apache-2.0 OR MIT | https://github.com/linebender/raw_resource_handle |
 | link-section | 0.19.3 | Apache-2.0 OR MIT | https://github.com/mmastrac/linktime |
 | linktime-proc-macro | 0.2.3 | Apache-2.0 OR MIT | https://github.com/mmastrac/linktime |
@@ -411,7 +417,7 @@ sidebar-group sync.
 | miniz_oxide | 0.9.1 | MIT OR Zlib OR Apache-2.0 | https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide |
 | mio | 1.2.3 | MIT | https://github.com/tokio-rs/mio |
 | moxcms | 0.8.1 | BSD-3-Clause OR Apache-2.0 | https://github.com/awxkee/moxcms.git |
-| muda | 0.19.3 | Apache-2.0 OR MIT | https://github.com/tauri-apps/muda |
+| muda | 0.21.2 | Apache-2.0 OR MIT | https://github.com/tauri-apps/muda |
 | multiversion_no_op | 1.0.0 | Apache-2.0 OR MIT | https://github.com/hsivonen/multiversion_no_op |
 | naga | 29.0.4 | MIT OR Apache-2.0 | https://github.com/gfx-rs/wgpu |
 | ndk-sys | 0.6.0+11769913 | MIT OR Apache-2.0 | https://github.com/rust-mobile/ndk |
@@ -443,7 +449,7 @@ sidebar-group sync.
 | objc-foundation | 0.1.1 | MIT | http://github.com/SSheldon/rust-objc-foundation |
 | objc-sys | 0.3.5 | MIT | https://github.com/madsmtm/objc2 |
 | objc2 | 0.5.2 | MIT | https://github.com/madsmtm/objc2 |
-| objc2 | 0.6.4 | MIT | https://github.com/madsmtm/objc2 |
+| objc2 | 0.6.5 | MIT | https://github.com/madsmtm/objc2 |
 | objc2-app-kit | 0.2.2 | MIT | https://github.com/madsmtm/objc2 |
 | objc2-app-kit | 0.3.2 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 |
 | objc2-cloud-kit | 0.3.2 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 |
@@ -569,7 +575,7 @@ sidebar-group sync.
 | redox_users | 0.5.3 | MIT | https://gitlab.redox-os.org/redox-os/users |
 | ref-cast | 1.0.27 | MIT OR Apache-2.0 | https://github.com/dtolnay/ref-cast |
 | ref-cast-impl | 1.0.27 | MIT OR Apache-2.0 | https://github.com/dtolnay/ref-cast |
-| reflink-copy | 0.1.30 | MIT/Apache-2.0 | https://github.com/cargo-bins/reflink-copy |
+| reflink-copy | 0.1.33 | MIT/Apache-2.0 | https://github.com/cargo-bins/reflink-copy |
 | regex | 1.13.1 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex |
 | regex-automata | 0.4.18 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex |
 | regex-syntax | 0.8.11 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex |
@@ -582,18 +588,19 @@ sidebar-group sync.
 | ropey | 2.0.0-beta.1 | MIT OR Apache-2.0 | https://github.com/cessen/ropey |
 | roxmltree | 0.20.0 | MIT OR Apache-2.0 | https://github.com/RazrFalcon/roxmltree |
 | roxmltree | 0.21.1 | MIT OR Apache-2.0 | https://github.com/RazrFalcon/roxmltree |
+| rusqlite | 0.37.0 | MIT | https://github.com/rusqlite/rusqlite |
 | rust-embed | 8.12.0 | MIT | https://pyrossh.dev/repos/rust-embed |
 | rust-embed-impl | 8.12.0 | MIT | https://pyrossh.dev/repos/rust-embed |
 | rust-embed-utils | 8.12.0 | MIT | https://pyrossh.dev/repos/rust-embed |
-| rust-i18n | 4.2.3 | MIT | https://github.com/longbridge/rust-i18n |
-| rust-i18n-macro | 4.2.3 | MIT | https://github.com/longbridge/rust-i18n |
-| rust-i18n-support | 4.2.3 | MIT | https://github.com/longbridge/rust-i18n |
+| rust-i18n | 4.2.4 | MIT | https://github.com/longbridge/rust-i18n |
+| rust-i18n-macro | 4.2.4 | MIT | https://github.com/longbridge/rust-i18n |
+| rust-i18n-support | 4.2.4 | MIT | https://github.com/longbridge/rust-i18n |
 | rustc-demangle | 0.1.28 | MIT/Apache-2.0 | https://github.com/rust-lang/rustc-demangle |
 | rustc-hash | 1.1.0 | Apache-2.0/MIT | https://github.com/rust-lang-nursery/rustc-hash |
 | rustc-hash | 2.1.3 | Apache-2.0 OR MIT | https://github.com/rust-lang/rustc-hash |
 | rustc_version | 0.4.1 | MIT OR Apache-2.0 | https://github.com/djc/rustc-version-rs |
 | rustix | 1.1.5 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/bytecodealliance/rustix |
-| rustls | 0.23.45 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/rustls |
+| rustls | 0.23.46 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/rustls |
 | rustls-native-certs | 0.8.4 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/rustls-native-certs |
 | rustls-pemfile | 2.2.0 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/pemfile |
 | rustls-pki-types | 1.15.1 | MIT OR Apache-2.0 | https://github.com/rustls/pki-types |
@@ -625,7 +632,7 @@ sidebar-group sync.
 | serde_derive | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde |
 | serde_derive_internals | 0.30.0 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde |
 | serde_fmt | 1.1.0 | Apache-2.0 OR MIT | https://github.com/KodrAus/serde_fmt.git |
-| serde_json | 1.0.151 | MIT OR Apache-2.0 | https://github.com/serde-rs/json |
+| serde_json | 1.0.154 | MIT OR Apache-2.0 | https://github.com/serde-rs/json |
 | serde_repr | 0.1.21 | MIT OR Apache-2.0 | https://github.com/dtolnay/serde-repr |
 | serde_spanned | 0.6.9 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |
 | serde_spanned | 1.1.1 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |
@@ -649,6 +656,7 @@ sidebar-group sync.
 | slab | 0.4.12 | MIT | https://github.com/tokio-rs/slab |
 | slotmap | 1.1.1 | Zlib | https://github.com/orlp/slotmap |
 | smallvec | 1.16.2 | MIT OR Apache-2.0 | https://github.com/servo/rust-smallvec |
+| smallvec | 1.16.6 | MIT OR Apache-2.0 | https://github.com/smallvec/smallvec |
 | smappservice-rs | 0.1.3 | MIT | https://github.com/gethopp/smappservice-rs |
 | smol | 2.0.2 | Apache-2.0 OR MIT | https://github.com/smol-rs/smol |
 | smol_str | 0.3.6 | MIT OR Apache-2.0 | https://github.com/rust-lang/rust-analyzer/tree/master/lib/smol_str |
@@ -680,6 +688,7 @@ sidebar-group sync.
 | svgtypes | 0.16.1 | Apache-2.0 OR MIT | https://github.com/linebender/svgtypes |
 | swash | 0.2.10 | Apache-2.0 OR MIT | https://github.com/dfrg/swash |
 | syn | 2.0.119 | MIT OR Apache-2.0 | https://github.com/dtolnay/syn |
+| syn | 3.0.10 | MIT OR Apache-2.0 | https://github.com/dtolnay/syn |
 | syn | 3.0.6 | MIT OR Apache-2.0 | https://github.com/dtolnay/syn |
 | sync_wrapper | 1.0.2 | Apache-2.0 | https://github.com/Actyx/sync_wrapper |
 | synstructure | 0.14.0 | MIT | https://github.com/mystor/synstructure |
@@ -702,7 +711,7 @@ sidebar-group sync.
 | tiff | 0.11.3 | MIT | https://github.com/image-rs/image-tiff |
 | time | 0.3.55 | MIT OR Apache-2.0 | https://github.com/time-rs/time |
 | time-core | 0.1.9 | MIT OR Apache-2.0 | https://github.com/time-rs/time |
-| tiny-keccak | 2.0.2 | CC0-1.0 |  |
+| tiny-keccak | 2.0.2 | CC0-1.0 | https://github.com/debris/tiny-keccak |
 | tiny-skia | 0.11.4 | BSD-3-Clause | https://github.com/RazrFalcon/tiny-skia |
 | tiny-skia-path | 0.11.4 | BSD-3-Clause | https://github.com/RazrFalcon/tiny-skia/tree/master/path |
 | tinystr | 0.8.4 | Unicode-3.0 | https://github.com/unicode-org/icu4x |
@@ -730,7 +739,7 @@ sidebar-group sync.
 | tracing-core | 0.1.36 | MIT | https://github.com/tokio-rs/tracing |
 | tracing-log | 0.2.0 | MIT | https://github.com/tokio-rs/tracing |
 | tracing-subscriber | 0.3.23 | MIT | https://github.com/tokio-rs/tracing |
-| tray-icon | 0.24.2 | MIT OR Apache-2.0 | https://github.com/tauri-apps/tray-icon |
+| tray-icon | 0.26.1 | MIT OR Apache-2.0 | https://github.com/tauri-apps/tray-icon |
 | triomphe | 0.1.16 | MIT OR Apache-2.0 | https://github.com/Manishearth/triomphe |
 | try-lock | 0.2.5 | MIT | https://github.com/seanmonstar/try-lock |
 | ttf-parser | 0.25.1 | MIT OR Apache-2.0 | https://github.com/harfbuzz/ttf-parser |
@@ -758,13 +767,13 @@ sidebar-group sync.
 | utf-8 | 0.7.6 | MIT OR Apache-2.0 | https://github.com/SimonSapin/rust-utf8 |
 | utf8_iter | 1.0.4 | Apache-2.0 OR MIT | https://github.com/hsivonen/utf8_iter |
 | utf8parse | 0.2.2 | Apache-2.0 OR MIT | https://github.com/alacritty/vte |
-| uuid | 1.26.1 | Apache-2.0 OR MIT | https://github.com/uuid-rs/uuid |
-| uuid | 1.29.0 | Apache-2.0 OR MIT | https://github.com/uuid-rs/uuid |
+| uuid | 1.29.3 | Apache-2.0 OR MIT | https://github.com/uuid-rs/uuid |
 | v_frame | 0.3.9 | BSD-2-Clause | https://github.com/rust-av/v_frame |
 | valuable | 0.1.1 | MIT | https://github.com/tokio-rs/valuable |
 | value-bag | 1.14.1 | Apache-2.0 OR MIT | https://github.com/sval-rs/value-bag |
 | value-bag-serde1 | 1.14.1 | Apache-2.0 OR MIT |  |
 | value-bag-sval2 | 1.14.1 | Apache-2.0 OR MIT |  |
+| vcpkg | 0.2.15 | MIT/Apache-2.0 | https://github.com/mcgoo/vcpkg-rs |
 | version_check | 0.9.5 | MIT/Apache-2.0 | https://github.com/SergioBenitez/version_check |
 | vswhom | 0.1.0 | MIT | https://github.com/nabijaczleweli/vswhom.rs |
 | vswhom-sys | 0.1.3 | MIT | https://github.com/nabijaczleweli/vswhom-sys.rs |
@@ -842,7 +851,6 @@ sidebar-group sync.
 | windows-strings | 0.5.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs |
 | windows-sys | 0.48.0 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs |
 | windows-sys | 0.52.0 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs |
-| windows-sys | 0.59.0 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs |
 | windows-sys | 0.61.2 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs |
 | windows-targets | 0.48.5 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs |
 | windows-targets | 0.52.6 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs |
@@ -875,7 +883,7 @@ sidebar-group sync.
 | windows_x86_64_msvc | 0.53.1 | MIT OR Apache-2.0 | https://github.com/microsoft/windows-rs |
 | winnow | 0.7.15 | MIT | https://github.com/winnow-rs/winnow |
 | winnow | 1.0.4 | MIT | https://github.com/winnow-rs/winnow |
-| winreg | 0.55.0 | MIT | https://github.com/gentoo90/winreg-rs |
+| winreg | 0.56.0 | MIT | https://github.com/gentoo90/winreg-rs |
 | wio | 0.2.2 | MIT/Apache-2.0 | https://github.com/retep998/wio-rs |
 | wit-bindgen | 0.57.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/bytecodealliance/wit-bindgen |
 | writeable | 0.6.4 | Unicode-3.0 | https://github.com/unicode-org/icu4x |
@@ -921,9 +929,9 @@ sidebar-group sync.
 | zerovec-derive | 0.11.6 | Unicode-3.0 | https://github.com/unicode-org/icu4x |
 | zlib-rs | 0.6.8 | Zlib | https://github.com/trifectatechfoundation/zlib-rs |
 | zmij | 1.0.23 | MIT | https://github.com/dtolnay/zmij |
-| zune-core | 0.4.12 | MIT OR Apache-2.0 OR Zlib |  |
+| zune-core | 0.4.12 | MIT OR Apache-2.0 OR Zlib | https://github.com/etemesi254/zune-image/tree/dev/zune-core |
 | zune-core | 0.5.3 | MIT OR Apache-2.0 OR Zlib | https://github.com/etemesi254/zune-image |
-| zune-inflate | 0.2.54 | MIT OR Apache-2.0 OR Zlib |  |
+| zune-inflate | 0.2.54 | MIT OR Apache-2.0 OR Zlib | https://github.com/etemesi254/zune-image/tree/main/zune-inflate |
 | zune-jpeg | 0.4.21 | MIT OR Apache-2.0 OR Zlib | https://github.com/etemesi254/zune-image/tree/dev/crates/zune-jpeg |
 | zune-jpeg | 0.5.15 | MIT OR Apache-2.0 OR Zlib | https://github.com/etemesi254/zune-image/tree/dev/crates/zune-jpeg |
 | zvariant | 5.15.0 | MIT | https://github.com/z-galaxy/zbus/ |

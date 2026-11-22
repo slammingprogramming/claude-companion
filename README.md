@@ -33,6 +33,10 @@ Inherited from cc-same 0.1.12 (see [NOTICE.md](NOTICE.md)):
   with snapshots, a 30-day trash, and atomic writes. Syncing needs no network access.
 - Background sync from login, with a tray / menu bar icon.
 - A numbered account list with aliases and plan usage, and **account switching on macOS**.
+- **Usage history** (new in this fork): Desktop keeps plan-usage readings for 30 days and Claude Code
+  deletes old transcripts. Claude Companion copies both into a local SQLite database, so you can keep
+  them for as long as you choose (2 years by default), graph every account against the others, and
+  export them as CSV. Nothing leaves your computer.
 - **New in this fork:** account switching on **Windows and Linux** (including ending Claude from
   the app or with `--force` where Windows keeps it in the tray). It is tested against stand-in
   data and compiles on all three systems, but it has not yet been run against a real Claude
@@ -126,6 +130,7 @@ claude-companion chats rescue   give lost chats a card again (--to <account>)
 claude-companion chats copy     put chats into another account's list (--from, --to)
 claude-companion chats export   a chat as Markdown or a web page (--format md|html)
 claude-companion stats          tokens by model, day and folder, from local transcripts
+claude-companion history        your long-term usage record: show, collect, keep <days|forever>, export, on/off, clear
 claude-companion groups         merge the sidebar groups of all accounts (--dry-run, --json)
 claude-companion code status    where Claude Code is, who it is signed in as, what it has (--json)
 claude-companion code sessions  terminal sessions, newest first (--dir, -n, --terminal-only, --json)
@@ -154,6 +159,7 @@ Everything is in both, with these differences:
 | `accounts`, `switch`, `add`, `remove`, `alias`, `enable` / `disable`, `move` | The account list |
 | `reset` | The pencil on an account (*Edit…*): its name and weekly reset day and time |
 | `chats list`, `chats copy`, `chats lost`, `chats rescue`, `chats export`, `stats` | *All chats* (show, copy between two accounts), *Lost chats*, *Export a chat*, *Token statistics* |
+| `history`, `history keep`, `history export`, `history clear` | The chart icon in the title bar (or Settings › Tools › *Usage history*): graphs, how long to keep, CSV export, delete |
 | `groups`, `config --groups` | *Merge sidebar groups*, Settings › Sync |
 | `code sessions`, `resume`, `run [dir]`, `status` | *Terminal sessions*, *Claude Code (terminal)* (new, continue, in a folder), *Diagnostics* |
 | `code settings` | *Claude Code settings*: show, and the permission mode. **Any other key is command line only.** |

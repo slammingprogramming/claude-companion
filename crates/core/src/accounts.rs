@@ -214,13 +214,17 @@ pub fn observe(ctx: &Ctx) -> Roster {
 /// What each account last used of its plan, as far as Claude's record tells: the ones in the
 /// list, and the ones only seen in Claude's session folders.
 pub fn usage(ctx: &Ctx, roster: &Roster) -> BTreeMap<String, usage::Usage> {
+    usage::latest(&usage::read(&ctx.paths), &org_owners(ctx, roster))
+}
+
+/// Which account each organization in Claude's usage record belongs to.
+pub fn org_owners(ctx: &Ctx, roster: &Roster) -> BTreeMap<String, String> {
     let folders: Vec<(String, String)> =
         crate::Surface::ALL.into_iter().flat_map(|s| scan::discover(ctx, s)).map(|p| (p.acct, p.org)).collect();
-    let owners = usage::owners(
+    usage::owners(
         roster.slots.iter().map(|s| (s.account.as_str(), s.orgs.as_slice())),
         folders.iter().map(|(a, o)| (a.as_str(), o.as_str())),
-    );
-    usage::latest(&usage::read(&ctx.paths), &owners)
+    )
 }
 
 /// Why an account could not be found.

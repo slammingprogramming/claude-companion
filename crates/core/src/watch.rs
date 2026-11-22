@@ -150,6 +150,24 @@ pub fn run(ctx: &Ctx, opts: &WatchOptions, stop: &AtomicBool) {
                 }
             }
         });
+        // Keep a copy of what Claude is about to forget (its plan readings last 30 days, and old
+        // transcripts are deleted). The first count of a large history takes a while, so it has a
+        // thread of its own and never holds a sync back.
+        scope.spawn(|| {
+            while !stop.load(Ordering::Relaxed) && !done.load(Ordering::Relaxed) {
+                if ctx.config().history {
+                    match crate::history::collect(ctx) {
+                        Ok(kept) if kept.new_samples > 0 || kept.pruned > 0 => ctx.debug(format!(
+                            "history: {} new reading(s), {} old row(s) trimmed",
+                            kept.new_samples, kept.pruned
+                        )),
+                        Ok(_) => {}
+                        Err(e) => ctx.log(format!("history: {e:#}")),
+                    }
+                }
+                sleep_while(stop, Duration::from_secs(5 * 60));
+            }
+        });
         while !stop.load(Ordering::Relaxed) {
             passes += 1;
             if let Err(e) = ctx.reload_config() {

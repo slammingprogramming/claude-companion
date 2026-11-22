@@ -10,6 +10,7 @@ use std::borrow::Cow;
 
 /// Icons outside GPUI Kit's default set, by asset path.
 const EXTRA: &[(&str, &[u8])] = &[
+    ("icons/chart-line.svg", include_bytes!("../assets/icons/chart-line.svg")),
     ("icons/pencil.svg", include_bytes!("../assets/icons/pencil.svg")),
     ("icons/rotate-cw.svg", include_bytes!("../assets/icons/rotate-cw.svg")),
 ];

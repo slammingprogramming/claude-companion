@@ -15,7 +15,7 @@ use claude_companion_core::{
 };
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
-use gpui_kit::component::{Disableable as _, IconName, Sizable as _, h_flex};
+use gpui_kit::component::{Disableable as _, Icon, IconName, Sizable as _, h_flex};
 use gpui_kit::{
     Anchor, AnyElement, App, ClipboardItem, Context, Entity, IntoElement as _, ParentElement as _, SharedString,
     Styled as _,
@@ -24,14 +24,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Where an exported chat goes: the Downloads folder, else the home folder.
-fn export_dir() -> PathBuf {
+pub(crate) fn export_dir() -> PathBuf {
     let home = claude_companion_core::paths::home();
     let downloads = home.join("Downloads");
     if downloads.is_dir() { downloads } else { home }
 }
 
 /// `path`, or `name (2).ext`, `name (3).ext`… when it is taken: an export never replaces a file.
-fn free_path(path: PathBuf) -> PathBuf {
+pub(crate) fn free_path(path: PathBuf) -> PathBuf {
     if !path.exists() {
         return path;
     }
@@ -381,6 +381,30 @@ impl Store {
             let dest = free_path(export_dir().join(file_name(&title, &id, ext)));
             std::fs::write(&dest, body)?;
             Ok(tf("toast.exported", &[("path", &dest.display().to_string())]))
+        });
+    }
+
+    /// Write the usage history's plan readings or token counts as CSV into the Downloads folder.
+    pub fn export_history(&mut self, tokens: bool, cx: &mut Context<Self>) {
+        self.run_task(Busy::Saving, cx, move |ctx| {
+            let history = claude_companion_core::history::History::open(&ctx.paths)?;
+            let name = if tokens { "claude-companion-tokens.csv" } else { "claude-companion-plan-use.csv" };
+            let dest = free_path(export_dir().join(name));
+            let mut file = std::fs::File::create(&dest)?;
+            if tokens {
+                history.write_tokens_csv(&mut file)?;
+            } else {
+                history.write_plan_csv(&mut file)?;
+            }
+            Ok(tf("toast.exported", &[("path", &dest.display().to_string())]))
+        });
+    }
+
+    /// Delete the whole usage history.
+    pub fn clear_history(&mut self, cx: &mut Context<Self>) {
+        self.run_task(Busy::Saving, cx, |ctx| {
+            claude_companion_core::history::History::open(&ctx.paths)?.clear()?;
+            Ok(t("history.cleared"))
         });
     }
 
@@ -808,7 +832,18 @@ pub fn rows(
         }))
         .child(mode_menu(store, idle))
         .into_any_element();
+    let history = Button::new("open-history")
+        .small()
+        .outline()
+        .icon(Icon::empty().path("icons/chart-line.svg"))
+        .label(t("settings.show"))
+        .on_click({
+            let store = store.clone();
+            move |_, window, cx| crate::usage_view::open(store.clone(), window, cx)
+        })
+        .into_any_element();
     vec![
+        row(t("history.title"), Some(t("history.detail")), history, cx),
         row(t("tools.desktop"), Some(t("tools.desktop.detail")), claude, cx),
         row(t("tools.code"), Some(t("tools.code.detail")), terminal, cx),
         row(t("tools.sessions"), Some(t("tools.sessions.detail")), sessions, cx),

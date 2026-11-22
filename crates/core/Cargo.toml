@@ -13,6 +13,7 @@ anyhow.workspace = true
 chrono.workspace = true
 dirs.workspace = true
 reflink-copy.workspace = true
+rusqlite.workspace = true
 rusty-leveldb.workspace = true
 serde.workspace = true
 serde_json.workspace = true
