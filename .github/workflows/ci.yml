@@ -1,7 +1,8 @@
 name: CI
 
 # Only what the build, the tests or the shipped notes read starts a run. Documents, licence texts and
-# GitHub's own community files cannot change a build, so changing only those runs nothing.
+# GitHub's own community files, and the CodeQL workflow, cannot change a build, so changing only
+# those runs nothing.
 # CHANGELOG.md is not on the list: the app embeds it and CI checks it against the version.
 on:
   push:
@@ -22,6 +23,7 @@ on:
       - .github/CODEOWNERS
       - .github/FUNDING.yml
       - .github/dependabot.yml
+      - .github/workflows/codeql.yml
   pull_request:
     paths-ignore:
       - README.md
@@ -39,6 +41,7 @@ on:
       - .github/CODEOWNERS
       - .github/FUNDING.yml
       - .github/dependabot.yml
+      - .github/workflows/codeql.yml
 
 permissions:
   contents: read
