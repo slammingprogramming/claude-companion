@@ -7,6 +7,13 @@ Versions up to 0.1.13 are the history of [cc-same](https://github.com/songkeys/c
 Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0.1.12 and merged
 0.1.13 afterwards.
 
+## Unreleased
+
+### Added
+
+- Community files: a Code of Conduct (Contributor Covenant 2.1), a security policy, contributing
+  and support guides, issue forms for bugs and ideas, and a pull request checklist.
+
 ## 0.2.3 - 2026-11-22
 
 ### Added

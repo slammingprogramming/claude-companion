@@ -193,6 +193,12 @@ Linux needs `clang cmake libfontconfig-dev libssl-dev libvulkan1 libwayland-dev 
 libxkbcommon-x11-dev libzstd-dev pkg-config` for the app. [`docs/how-it-works.md`](docs/how-it-works.md)
 describes how Claude Desktop's data is laid out and why the sync is safe.
 
+## Contributing and community
+
+Bug reports, ideas, translations and code are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md), and
+the [Code of Conduct](CODE_OF_CONDUCT.md) that applies to everyone taking part. Questions go through
+[SUPPORT.md](SUPPORT.md); security problems through [SECURITY.md](SECURITY.md), privately.
+
 ## Contact and support
 
 Claude Companion is free software made in spare time. If it is useful to you:

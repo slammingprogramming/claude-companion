@@ -1,0 +1,63 @@
+name: Bug report
+description: Something does not work, or does something it should not
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Please do not paste tokens, cookies, account emails or the contents of
+        your Claude files.** Security problems go through the private route in
+        [SECURITY.md](https://github.com/slammingprogramming/claude-companion/blob/main/SECURITY.md), not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Desktop app
+        - Command line
+        - Both / not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `claude-companion --version`, or the version in Settings › About.
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: System
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: claude
+    attributes:
+      label: Claude Desktop / Claude Code version
+      description: If you know them.
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `claude-companion doctor` (optional)
+      description: Remove account emails and anything else private first.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I am on the latest release.
+        - label: I have left out tokens, cookies, emails and file contents.
+          required: true

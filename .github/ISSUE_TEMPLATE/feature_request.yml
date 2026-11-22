@@ -1,0 +1,43 @@
+name: Feature request
+description: An idea for something Claude Companion could do
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Claude Companion moves and merges the files of Claude Desktop and Claude Code on your own
+        computer, and never looks inside a sign-in. Ideas that fit that are welcome; see
+        [CONTRIBUTING.md](https://github.com/slammingprogramming/claude-companion/blob/main/CONTRIBUTING.md)
+        for what it will and will not do.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The situation, not the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like it to do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today instead?
+  - type: dropdown
+    id: system
+    attributes:
+      label: Which systems matter to you?
+      multiple: true
+      options:
+        - Windows
+        - macOS
+        - Linux
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Help
+      options:
+        - label: I could try a build or help write it.
