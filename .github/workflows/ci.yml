@@ -1,9 +1,44 @@
 name: CI
 
+# Only what the build, the tests or the shipped notes read starts a run. Documents, licence texts and
+# GitHub's own community files cannot change a build, so changing only those runs nothing.
+# CHANGELOG.md is not on the list: the app embeds it and CI checks it against the version.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - README.md
+      - NOTICE.md
+      - THIRD_PARTY.md
+      - CODE_OF_CONDUCT.md
+      - CONTRIBUTING.md
+      - SECURITY.md
+      - SUPPORT.md
+      - LICENSE
+      - LICENSES/**
+      - docs/**
+      - .github/ISSUE_TEMPLATE/**
+      - .github/pull_request_template.md
+      - .github/CODEOWNERS
+      - .github/FUNDING.yml
+      - .github/dependabot.yml
   pull_request:
+    paths-ignore:
+      - README.md
+      - NOTICE.md
+      - THIRD_PARTY.md
+      - CODE_OF_CONDUCT.md
+      - CONTRIBUTING.md
+      - SECURITY.md
+      - SUPPORT.md
+      - LICENSE
+      - LICENSES/**
+      - docs/**
+      - .github/ISSUE_TEMPLATE/**
+      - .github/pull_request_template.md
+      - .github/CODEOWNERS
+      - .github/FUNDING.yml
+      - .github/dependabot.yml
 
 permissions:
   contents: read
