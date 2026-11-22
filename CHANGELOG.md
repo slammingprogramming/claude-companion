@@ -16,6 +16,9 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
 
 ### Changed
 
+- **Plan use shows as soon as Claude writes it.** While the window is open, the app watches Claude's
+  plan-usage record every 1.5 seconds instead of waiting for the 12-second refresh (from
+  Arcaneology's cc-same pull request 9).
 - The app carries only released changelog sections: `build.rs` leaves out `## Unreleased`, so notes
   there reach no build until they have a version number. A release warns if one is left behind.
 - CI and the CodeQL scan no longer run for changes that only touch documents, licence texts or
