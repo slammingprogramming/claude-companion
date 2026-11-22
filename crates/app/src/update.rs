@@ -28,8 +28,9 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 const LATEST: &str = "https://api.github.com/repos/slammingprogramming/claude-companion/releases/latest";
 /// Where people can download the latest release themselves.
 pub const DOWNLOADS: &str = "https://github.com/slammingprogramming/claude-companion/releases/latest";
-/// What changed in each version, as of this build.
-pub const CHANGELOG: &str = include_str!("../../../CHANGELOG.md");
+/// What changed in each released version, as of this build. `CHANGELOG.md` without its
+/// `## Unreleased` section, which build.rs leaves out: it reaches a build only once it has a number.
+pub const CHANGELOG: &str = include_str!(concat!(env!("OUT_DIR"), "/changelog.md"));
 /// Given to a freshly installed copy, followed by the process id of the copy it replaces.
 pub const AFTER_UPDATE: &str = "--after-update";
 /// Makes the program print its name and version, and exit.
@@ -798,6 +799,17 @@ mod tests {
     fn versions_compare_as_numbers() {
         assert!(Version::parse("0.1.10").unwrap() > Version::parse("0.1.9").unwrap());
         assert!(Version::parse("1.0.0").unwrap() > Version::parse("1.0.0-rc.1").unwrap());
+    }
+
+    #[test]
+    fn unreleased_notes_never_reach_a_build() {
+        let heads = CHANGELOG.lines().filter(|l| l.starts_with("## ")).collect::<Vec<_>>();
+        assert!(!heads.is_empty());
+        for head in heads {
+            let name = head[3..].trim().trim_matches(['[', ']']).to_ascii_lowercase();
+            assert_ne!(name, "unreleased", "the embedded changelog has an Unreleased section");
+            assert!(Version::parse(name.split_whitespace().next().unwrap_or_default()).is_ok(), "{head}");
+        }
     }
 
     #[test]

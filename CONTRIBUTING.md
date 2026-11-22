@@ -61,8 +61,9 @@ Plus:
   `CLAUDE_COMPANION_USER_DATA`, `CLAUDE_COMPANION_STATE_DIR`, `CLAUDE_COMPANION_DESKTOP_LOG_DIR`,
   `CLAUDE_COMPANION_PROJECTS` and `CLAUDE_CONFIG_DIR`. If you try something on a copy of real
   files, never put any of it in the repository, a test, a log or an issue.
-- **Add a line to `CHANGELOG.md`** under a new `## Unreleased` heading, written for people who use
-  the program, not for the code.
+- **Add a line to `CHANGELOG.md`** under `## Unreleased`, written for people who use the program,
+  not for the code. Notes under `Unreleased` are left out of every build (the app carries only
+  released sections) until the maintainer gives them a version number at release time.
 - **Text the app shows goes in `crates/app/locales/app.yml`** in all ten languages (English,
   Simplified and Traditional Chinese, Japanese, Korean, French, German, Spanish, Brazilian
   Portuguese, Russian). Machine translations are fine as a start if you say so in the pull request.

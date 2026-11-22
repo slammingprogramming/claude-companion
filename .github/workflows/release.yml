@@ -127,6 +127,10 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           awk -v v="$version" '$1 == "##" && f { exit } $1 == "##" && $2 == v { f = 1; next } f' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
           grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md" || { echo "::error::CHANGELOG.md has no section for $version"; exit 1; }
+          # Notes under "Unreleased" are not in this release's notes or in the app: they need a version first.
+          if grep -qiE '^## \[?unreleased\]?' CHANGELOG.md; then
+            echo "::warning::CHANGELOG.md still has an Unreleased section; it is not part of $version."
+          fi
       - uses: softprops/action-gh-release@v3
         with:
           files: dist/*

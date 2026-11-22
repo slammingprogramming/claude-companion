@@ -16,9 +16,12 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
 
 ### Changed
 
+- The app carries only released changelog sections: `build.rs` leaves out `## Unreleased`, so notes
+  there reach no build until they have a version number. A release warns if one is left behind.
 - CI and the CodeQL scan no longer run for changes that only touch documents, licence texts or
   GitHub's community files. CodeQL is now a workflow (`.github/workflows/codeql.yml`: actions, Python
   and Rust, default queries, weekly) instead of GitHub's default setup, which cannot skip by path.
+  Editing `CHANGELOG.md` alone starts neither.
 
 ## 0.2.3 - 2026-11-22
 

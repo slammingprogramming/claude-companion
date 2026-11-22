@@ -6,6 +6,7 @@ use std::path::Path;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    embed_released_changelog();
     // rust-i18n reads the messages while compiling; without this, editing them alone rebuilds nothing.
     println!("cargo:rerun-if-changed=locales");
     println!("cargo:rerun-if-env-changed=CLAUDE_COMPANION_SKIP_RESOURCES");
@@ -14,6 +15,31 @@ fn main() {
         && std::env::var_os("CLAUDE_COMPANION_SKIP_RESOURCES").is_none()
     {
         embed_windows_resources();
+    }
+}
+
+/// The changelog the app carries: every released version's section, and nothing under
+/// `## Unreleased` (or `## [Unreleased]`), which stays out of every build until it is given a
+/// version number. Written only when it differs, so editing the unreleased notes rebuilds nothing.
+fn embed_released_changelog() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("CHANGELOG.md");
+    println!("cargo:rerun-if-changed={}", source.display());
+    let text = std::fs::read_to_string(&source).expect("read CHANGELOG.md");
+    let mut released = String::with_capacity(text.len());
+    let mut unreleased = false;
+    for line in text.lines() {
+        if let Some(heading) = line.strip_prefix("## ") {
+            let name = heading.trim().trim_matches(['[', ']']).to_ascii_lowercase();
+            unreleased = name == "unreleased";
+        }
+        if !unreleased {
+            released.push_str(line);
+            released.push('\n');
+        }
+    }
+    let out = Path::new(&std::env::var("OUT_DIR").unwrap()).join("changelog.md");
+    if std::fs::read_to_string(&out).ok().as_deref() != Some(released.as_str()) {
+        std::fs::write(&out, released).expect("write the released changelog");
     }
 }
 

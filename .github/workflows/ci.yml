@@ -3,11 +3,14 @@ name: CI
 # Only what the build, the tests or the shipped notes read starts a run. Documents, licence texts and
 # GitHub's own community files, and the CodeQL workflow, cannot change a build, so changing only
 # those runs nothing.
-# CHANGELOG.md is not on the list: the app embeds it and CI checks it against the version.
+# CHANGELOG.md is on the list too: the app carries only the released sections (build.rs leaves out
+# `## Unreleased`), and a release changes Cargo.toml, which does start CI, so the version check
+# below still runs when it matters.
 on:
   push:
     branches: [main]
     paths-ignore:
+      - CHANGELOG.md
       - README.md
       - NOTICE.md
       - THIRD_PARTY.md
@@ -26,6 +29,7 @@ on:
       - .github/workflows/codeql.yml
   pull_request:
     paths-ignore:
+      - CHANGELOG.md
       - README.md
       - NOTICE.md
       - THIRD_PARTY.md
