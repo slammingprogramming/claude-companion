@@ -14,6 +14,12 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
 - Community files: a Code of Conduct (Contributor Covenant 2.1), a security policy, contributing
   and support guides, issue forms for bugs and ideas, and a pull request checklist.
 
+### Changed
+
+- CI and the CodeQL scan no longer run for changes that only touch documents, licence texts or
+  GitHub's community files. CodeQL is now a workflow (`.github/workflows/codeql.yml`: actions, Python
+  and Rust, default queries, weekly) instead of GitHub's default setup, which cannot skip by path.
+
 ## 0.2.3 - 2026-11-22
 
 ### Added
