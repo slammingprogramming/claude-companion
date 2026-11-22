@@ -946,7 +946,7 @@ dependencies = [
 
 [[package]]
 name = "claude-companion-app"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "auto-launch",
@@ -972,7 +972,7 @@ dependencies = [
 
 [[package]]
 name = "claude-companion-core"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "chrono",
