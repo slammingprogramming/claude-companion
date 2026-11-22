@@ -207,6 +207,17 @@ fn series(plan: &[PlanDay], tokens: &[TokenDay]) -> Series {
     Series { accounts, buckets }
 }
 
+/// One colour per account, far apart in hue so the lines tell apart on a light or a dark window.
+/// The theme's own chart colours are all shades of one hue, which is no use for comparing accounts.
+const ACCOUNT_COLORS: [(f32, f32, f32); 6] = [
+    (215., 0.80, 0.55), // blue
+    (28., 0.90, 0.55),  // orange
+    (150., 0.60, 0.40), // green
+    (320., 0.65, 0.55), // magenta
+    (185., 0.70, 0.40), // teal
+    (265., 0.60, 0.62), // violet
+];
+
 fn tokens_text(n: u64) -> String {
     match n {
         0..=9_999 => n.to_string(),
@@ -255,7 +266,7 @@ impl Render for UsageHistory {
         let store = self.store.clone();
         let config = store.read(cx).config();
         let names: BTreeMap<String, String> = store.read(cx).accounts().into_iter().map(|a| (a.id, a.name)).collect();
-        let palette: [Hsla; 5] = [theme.chart_1, theme.chart_2, theme.chart_3, theme.chart_4, theme.chart_5];
+        let palette = ACCOUNT_COLORS.map(|(h, s, l)| Hsla { h: h / 360., s, l, a: 1. });
 
         let ranges = ButtonGroup::new("history-range")
             .small()
@@ -361,10 +372,11 @@ impl Render for UsageHistory {
                         chart = chart
                             .y(move |b: &Bucket| if weekly { b.weekly[i] } else { b.five[i] })
                             .stroke(color)
-                            .fill(color.opacity(0.06))
+                            .fill(color.opacity(0.08))
                             .linear()
                             .name(name_of(account));
                     }
+                    chart = chart.tooltip_value(|_, _, v| format!("{v:.0}%").into());
                     body = body.child(
                         v_flex()
                             .gap_2()
@@ -379,6 +391,8 @@ impl Render for UsageHistory {
                         .id("history-tokens")
                         .band(|b: &Bucket| b.label.clone())
                         .value(|b: &Bucket| b.tokens)
+                        .name(t("history.export.tokens"))
+                        .tooltip_value(|_, v| tokens_text(v as u64).into())
                         .fill(move |_, _, _, _| gpui_kit::Background::from(palette[0]))
                         .tick_margin((series.buckets.len() / 5).max(1));
                     body = body.child(
