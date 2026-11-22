@@ -19,7 +19,7 @@ use claude_companion_core::logins;
 use claude_companion_core::report;
 use claude_companion_core::retention::{self, Kept, Limit};
 use claude_companion_core::service::{self, Heartbeat};
-use claude_companion_core::usage::Usage;
+use claude_companion_core::usage::{self, Usage};
 use claude_companion_core::watch::{self, WatchOptions};
 use claude_companion_core::{
     apply, fsx, plan, scan, short, snapshot, Config, Ctx, FakeDesktop, LogSink, Paths, State, Surface,
@@ -323,6 +323,18 @@ enum Cmd {
         #[arg(long, requires = "account", conflicts_with = "name")]
         unset: bool,
     },
+    /// When an account's weekly plan window renews: show it, set it (day and time) or clear it
+    Reset {
+        /// Its number, alias or email; without one, every account that has a reset
+        account: Option<String>,
+        /// The weekday it renews on (`fri`), as this computer's clock reads it
+        day: Option<String>,
+        /// The time it renews at (`06:00`, `6pm`)
+        time: Option<String>,
+        /// Forget it
+        #[arg(long, requires = "account", conflicts_with_all = ["day", "time"])]
+        clear: bool,
+    },
     /// Leave an account out of `switch` without an account (it can still be named)
     Disable { account: String },
     /// Put an account back in the rotation
@@ -490,6 +502,9 @@ fn run(cli: Cli) -> Result<()> {
         Cmd::Add { force } => add(&ctx, force),
         Cmd::Remove { account, yes } => remove(&ctx, &account, yes),
         Cmd::Alias { account, name, unset } => alias(&ctx, account.as_deref(), name.as_deref(), unset),
+        Cmd::Reset { account, day, time, clear } => {
+            reset(&ctx, account.as_deref(), day.as_deref(), time.as_deref(), clear)
+        }
         Cmd::Disable { account } => sit_out(&ctx, &account, true),
         Cmd::Enable { account } => sit_out(&ctx, &account, false),
         Cmd::Move { account, number } => move_account(&ctx, &account, number),
@@ -738,20 +753,29 @@ fn name_in(roster: &Roster, account: &str) -> String {
     roster.slot(account).map(Slot::label).unwrap_or_else(|| format!("Account {}", short(account)))
 }
 
-/// "5h 12% · 7d 58%, 2 min ago", or nothing when Claude has no reading.
-fn usage_text(usage: Option<&Usage>, now: f64) -> String {
+/// "5h 12% · 7d 58%, 2 min ago · resets in 3d 4h", or nothing when Claude has no reading.
+/// `weekly_reset` is when the account's weekly window renews, when it was given: a weekly reading
+/// from before the last renewal has started over.
+fn usage_text(usage: Option<&Usage>, now: f64, weekly_reset: Option<i64>) -> String {
     let Some(u) = usage else { return String::new() };
     let mut parts = Vec::new();
     if let Some(p) = u.five_hour_at(now) {
         parts.push(format!("5h {p:.0}%"));
     }
-    if let Some(p) = u.weekly_at(now) {
-        parts.push(format!("7d {p:.0}%"));
+    let renewed = weekly_reset.is_some_and(|a| u.at < usage::last_weekly_reset(a, now as i64) as f64);
+    match (renewed, u.weekly_at(now)) {
+        (true, _) if u.weekly.is_some() => parts.push("7d 0%".to_string()),
+        (_, Some(p)) => parts.push(format!("7d {p:.0}%")),
+        _ => {}
     }
     if parts.is_empty() {
         return String::new();
     }
-    format!("{}, {}", parts.join(" · "), report::ago(u.at))
+    let mut text = format!("{}, {}", parts.join(" · "), report::ago(u.at));
+    if let Some(a) = weekly_reset {
+        text.push_str(&format!(" · resets in {}", usage::reset_in_text(a, now as i64)));
+    }
+    text
 }
 
 fn accounts(ctx: &Ctx, json: bool) -> Result<()> {
@@ -777,6 +801,8 @@ fn accounts(ctx: &Ctx, json: bool) -> Result<()> {
                     "switchable": kept.is_some(),
                     "keptAt": kept.map(|k| k.set_aside_at),
                     "stale": kept.is_some_and(|k| k.stale()),
+                    "weeklyReset": s.weekly_reset,
+                    "nextWeeklyReset": s.weekly_reset.map(|a| usage::next_weekly_reset(a, now as i64)),
                     "usage": u.map(|u| serde_json::json!({
                         "at": u.at,
                         "fiveHour": u.five_hour_at(now),
@@ -809,7 +835,7 @@ fn accounts(ctx: &Ctx, json: bool) -> Result<()> {
             "sign in once to switch here (`claude-companion add`)".to_string()
         };
         let state = if s.disabled { format!("{state}, sits out") } else { state };
-        let used = usage_text(usage.get(&s.account), now);
+        let used = usage_text(usage.get(&s.account), now, s.weekly_reset);
         let alias = s.alias.clone().unwrap_or_default();
         let line = format!("  {:>2}  {:name_width$}  {alias:alias_width$}  {state:<30}  {used}", s.number, s.label());
         println!("{}", line.trim_end());
@@ -935,6 +961,70 @@ fn alias(ctx: &Ctx, account: Option<&str>, name: Option<&str>, unset: bool) -> R
             Some(alias) => println!("{alias}"),
             None => println!("{label} has no alias."),
         }
+    }
+    Ok(())
+}
+
+const WEEKDAYS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/// "Fri 06:00 (in 3d 4h)": when the weekly window that renews at `anchor` next renews, on this
+/// computer's clock.
+fn reset_text(anchor: i64, now: i64) -> String {
+    match usage::next_weekly_reset_here(anchor, now) {
+        Some((day, hour, minute)) => {
+            format!("{} {hour:02}:{minute:02} (in {})", WEEKDAYS[day % 7], usage::reset_in_text(anchor, now))
+        }
+        None => format!("in {}", usage::reset_in_text(anchor, now)),
+    }
+}
+
+fn reset(ctx: &Ctx, account: Option<&str>, day: Option<&str>, time: Option<&str>, clear: bool) -> Result<()> {
+    let roster = accounts::observe(ctx);
+    let now = fsx::now_secs() as i64;
+    let Some(query) = account else {
+        let given: Vec<&Slot> = roster.slots.iter().filter(|s| s.weekly_reset.is_some()).collect();
+        if given.is_empty() {
+            println!("No weekly resets yet: `claude-companion reset <account> <day> <time>`, for example `reset 1 fri 06:00`.");
+        }
+        for s in given {
+            println!(
+                "  {:>2}  {}  renews {}",
+                s.number,
+                s.label(),
+                reset_text(s.weekly_reset.unwrap_or_default(), now)
+            );
+        }
+        return Ok(());
+    };
+    let (id, label) = named(ctx, &roster, query)?;
+    if clear {
+        accounts::set_weekly_reset(ctx, &id, None)?;
+        println!("{label} has no weekly reset now.");
+        return Ok(());
+    }
+    match (day, time) {
+        (Some(day), Some(time)) => {
+            let Some(weekday) = usage::parse_weekday(day) else {
+                bail!("{day} is not a weekday: use mon, tue, wed, thu, fri, sat or sun");
+            };
+            let Some((hour, minute)) = usage::parse_clock(time) else {
+                bail!("{time} is not a time of day: use 06:00, 18:30 or 6pm");
+            };
+            let Some(anchor) = usage::weekly_anchor_here(weekday.num_days_from_monday() as usize, hour, minute, now)
+            else {
+                bail!("{day} {time} is not a time this computer's clock has");
+            };
+            accounts::set_weekly_reset(ctx, &id, Some(anchor))?;
+            println!("{label} renews {}.", reset_text(anchor, now));
+        }
+        (None, None) => {
+            let anchor = roster.slot(&id).and_then(|s| s.weekly_reset);
+            match anchor {
+                Some(anchor) => println!("{label} renews {}.", reset_text(anchor, now)),
+                None => println!("{label} has no weekly reset: `claude-companion reset {query} <day> <time>`."),
+            }
+        }
+        _ => bail!("give both the day and the time, for example `reset {query} fri 06:00`"),
     }
     Ok(())
 }

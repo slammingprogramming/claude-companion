@@ -118,6 +118,7 @@ claude-companion switch [<who>] switch Claude to an account, or the next one (--
 claude-companion add            restart Claude signed out, to add an account (--force on Windows)
 claude-companion remove <who>   take an account off the list, forgetting its saved sign-in
 claude-companion alias <who> <name>, disable <who>, enable <who>, move <who> <number>
+claude-companion reset [<who> <day> <time>]  when an account's weekly limit renews (--clear); the account list then counts down to it
 claude-companion chats list     every chat of every account (--account, --json)
 claude-companion chats lost     conversations on disk that no account shows
 claude-companion chats rescue   give lost chats a card again (--to <account>)
@@ -150,6 +151,7 @@ Everything is in both, with these differences:
 | `doctor`, `plan`, `sync`, `status`, `install` / `uninstall` | The window's headline, *Sync now*, the background switch, Settings › Tools › *Diagnostics* |
 | `snapshots`, `restore`, `fix-symlinks`, `retention` | Settings › Snapshots, the fix-links notice, Settings › Transcripts |
 | `accounts`, `switch`, `add`, `remove`, `alias`, `enable` / `disable`, `move` | The account list |
+| `reset` | The pencil on an account (*Edit…*): its name and weekly reset day and time |
 | `chats list`, `chats copy`, `chats lost`, `chats rescue`, `chats export`, `stats` | *All chats* (show, copy between two accounts), *Lost chats*, *Export a chat*, *Token statistics* |
 | `groups`, `config --groups` | *Merge sidebar groups*, Settings › Sync |
 | `code sessions`, `resume`, `run [dir]`, `status` | *Terminal sessions*, *Claude Code (terminal)* (new, continue, in a folder), *Diagnostics* |

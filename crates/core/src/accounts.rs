@@ -37,6 +37,9 @@ pub struct Slot {
     pub added_at: f64,
     /// Organizations Claude was seen using it with, to tell its plan usage apart.
     pub orgs: Vec<String>,
+    /// A moment its weekly plan window renews (Unix seconds), given by hand: it renews every week
+    /// from there ([`usage::next_weekly_reset`]). Claude keeps no reset time on disk.
+    pub weekly_reset: Option<i64>,
 }
 
 impl Slot {
@@ -310,6 +313,17 @@ pub fn set_alias(ctx: &Ctx, account: &str, alias: Option<&str>) -> Result<Roster
     Ok(roster)
 }
 
+/// Note when an account's weekly plan window renews (any one renewal), or forget it.
+pub fn set_weekly_reset(ctx: &Ctx, account: &str, at: Option<i64>) -> Result<Roster> {
+    let ((), roster) = edit(&ctx.paths, |roster| {
+        if let Some(slot) = roster.slot_mut(account) {
+            slot.weekly_reset = at;
+        }
+        Ok(())
+    })?;
+    Ok(roster)
+}
+
 /// Take an account out of the rotation, or back in.
 pub fn set_disabled(ctx: &Ctx, account: &str, disabled: bool) -> Result<Roster> {
     let ((), roster) = edit(&ctx.paths, |roster| {
@@ -563,6 +577,19 @@ mod tests {
         let taken = set_alias(&mac.ctx, ADA, Some("home")).unwrap_err();
         assert!(matches!(taken.downcast_ref::<Refused>(), Some(Refused::AliasTaken { .. })));
         assert_eq!(set_alias(&mac.ctx, BOB, None).unwrap().slot(BOB).unwrap().alias, None);
+    }
+
+    #[test]
+    fn a_weekly_reset_is_kept_with_the_account_and_can_be_cleared() {
+        let mac = Mac::new();
+        mac.signed_in(ADA);
+        observe(&mac.ctx);
+        let roster = set_weekly_reset(&mac.ctx, ADA, Some(1_793_000_000)).unwrap();
+        assert_eq!(roster.slot(ADA).unwrap().weekly_reset, Some(1_793_000_000));
+        // Read again from accounts.json, as another run would.
+        assert_eq!(observe(&mac.ctx).slot(ADA).unwrap().weekly_reset, Some(1_793_000_000));
+        assert_eq!(set_weekly_reset(&mac.ctx, ADA, None).unwrap().slot(ADA).unwrap().weekly_reset, None);
+        assert_eq!(observe(&mac.ctx).slot(ADA).unwrap().weekly_reset, None);
     }
 
     #[test]

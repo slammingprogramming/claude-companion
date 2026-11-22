@@ -7,7 +7,36 @@ Versions up to 0.1.13 are the history of [cc-same](https://github.com/songkeys/c
 Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0.1.12 and merged
 0.1.13 afterwards.
 
+## Unreleased
+
+### Added
+
+- **Weekly reset countdown.** Claude keeps no reset time on disk, so you give it once: in the app, the
+  pencil on an account (*Edit…*) takes a weekday and a time; on the command line,
+  `claude-companion reset <account> <day> <time>` (or `--clear`; no account lists them). The account
+  list then shows the time left (`3d 4h`) with the day and time on hover, and `accounts` adds
+  `resets in 3d 4h` (and `weeklyReset` / `nextWeeklyReset` in `--json`). A weekly reading from before
+  the last renewal counts as 0%. Taken from Arcaneology's cc-same pull request 9 (credited in NOTICE.md);
+  nothing is read or sent, and accounts without one are unchanged.
+
+### Fixed
+
+- **The macOS build.** The 0.1.13 merge left forced quit using constants upstream had replaced, so
+  the macOS app and command line did not compile and the 0.2.2 release was never published. This
+  release is the first with the 0.1.13 changes built on macOS.
+
+### Changed
+
+- Dependencies: the Dependabot updates for clap, dirs 7, libc, reflink-copy, serde_json, uuid,
+  windows-sys 0.61, sha2 0.11, tray-icon 0.26 and the rest of the weekly groups, with the code they
+  needed. `rusty-leveldb` stays on 3.x (it writes Claude's sidebar-group database) until 4.x is tried
+  against a real Claude.
+- GitHub Actions run on Node 24: checkout 7, upload-artifact 7, download-artifact 8, action-gh-release 3.
+
 ## 0.2.2 - 2026-11-21
+
+Tagged, but its macOS builds did not compile, so no release was published; the fix is in the next
+version.
 
 ### Changed
 
