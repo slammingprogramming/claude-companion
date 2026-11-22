@@ -466,7 +466,8 @@ impl UniApp {
                     store.update(cx, |store, cx| store.set_alias(account.clone(), name, cx));
                     // The same renewal given again keeps the moment noted before.
                     let same = |a: Option<i64>, b: Option<i64>| {
-                        let next = |at: Option<i64>| at.map(|at| claude_companion_core::usage::next_weekly_reset(at, now));
+                        let next =
+                            |at: Option<i64>| at.map(|at| claude_companion_core::usage::next_weekly_reset(at, now));
                         next(a) == next(b)
                     };
                     if !same(reset, renews) {

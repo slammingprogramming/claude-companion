@@ -419,7 +419,9 @@ pub fn reset_from(day: Option<usize>, time: &str, now: i64) -> Result<Option<i64
     }
     let Some((hour, minute)) = parse_clock(time) else { return Err(t("reset.bad_time")) };
     let Some(day) = day else { return Err(t("reset.no_day")) };
-    claude_companion_core::usage::weekly_anchor_here(day, hour, minute, now).map(Some).ok_or_else(|| t("reset.bad_time"))
+    claude_companion_core::usage::weekly_anchor_here(day, hour, minute, now)
+        .map(Some)
+        .ok_or_else(|| t("reset.bad_time"))
 }
 
 pub use claude_companion_core::usage::parse_clock;
@@ -694,7 +696,8 @@ mod tests {
     #[test]
     fn a_reading_from_before_the_weekly_reset_has_started_over() {
         let now = 1_000_000.0;
-        let read = |age: f64| claude_companion_core::usage::Usage { at: now - age, five_hour: Some(0.0), weekly: Some(84.0) };
+        let read =
+            |age: f64| claude_companion_core::usage::Usage { at: now - age, five_hour: Some(0.0), weekly: Some(84.0) };
         // The week renewed an hour ago.
         let anchor = Some(now as i64 - 3600);
         assert_eq!(PlanUse::of(&read(2.0 * 3600.0), now, false, anchor).unwrap().weekly, Some(0));
@@ -752,7 +755,8 @@ mod tests {
         let _locale = crate::i18n::TEST_LOCALE.lock().unwrap_or_else(|e| e.into_inner());
         rust_i18n::set_locale("en");
         let now = 1_000_000.0;
-        let read = |age: f64, five_hour, weekly| claude_companion_core::usage::Usage { at: now - age, five_hour, weekly };
+        let read =
+            |age: f64, five_hour, weekly| claude_companion_core::usage::Usage { at: now - age, five_hour, weekly };
         let fresh = PlanUse::of(&read(60.0, Some(12.4), Some(58.0)), now, true, None).unwrap();
         assert_eq!((fresh.short().as_str(), fresh.fullness()), ("7d 58%", Fullness::Roomy));
         assert!(!fresh.stale && fresh.age().is_none());
