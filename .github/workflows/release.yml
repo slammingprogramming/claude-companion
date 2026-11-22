@@ -29,7 +29,7 @@ jobs:
       # Secrets cannot appear in `if:`; this tells the steps whether Apple signing is set up.
       HAS_APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Linux build dependencies
         if: runner.os == 'Linux'
         run: |
@@ -100,7 +100,7 @@ jobs:
           Compress-Archive -Path "dist/app/*" -DestinationPath "dist/Claude-Companion-$version-windows-x64.zip"
           Compress-Archive -Path "dist/cli/*" -DestinationPath "dist/claude-companion-cli-$version-windows-x64.zip"
           Remove-Item -Recurse dist/app, dist/cli
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
           path: |
@@ -116,8 +116,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -127,7 +127,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           awk -v v="$version" '$1 == "##" && f { exit } $1 == "##" && $2 == v { f = 1; next } f' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
           grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md" || { echo "::error::CHANGELOG.md has no section for $version"; exit 1; }
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*
           body_path: ${{ runner.temp }}/notes.md

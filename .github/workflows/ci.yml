@@ -24,7 +24,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install the pinned toolchain
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@v2
@@ -47,7 +47,7 @@ jobs:
     name: CLI on Rust 1.89
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: rustup toolchain install 1.89 --profile minimal
       - uses: Swatinem/rust-cache@v2
         with:
@@ -62,7 +62,7 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Linux build dependencies
         if: runner.os == 'Linux'
         run: |
