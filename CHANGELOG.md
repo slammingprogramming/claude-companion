@@ -11,6 +11,11 @@ Songkeys, kept as written (so they say "CC Same"); Claude Companion forks from 0
 
 ### Added
 
+- **Seventeen more interface languages**, bringing the total to 27: Italian, Dutch, Polish,
+  Turkish, Ukrainian, Swedish, Danish, Norwegian Bokmål, Finnish, Czech, Hungarian, Romanian, Greek,
+  Indonesian, Vietnamese, Thai and Hindi. They are machine translations, so wording may be off;
+  corrections are welcome (see `docs/translations.md`). Plural forms follow each language's rules,
+  and the language list follows the system language, including Norwegian `no`/`nn`.
 - Community files: a Code of Conduct (Contributor Covenant 2.1), a security policy, contributing
   and support guides, issue forms for bugs and ideas, and a pull request checklist.
 

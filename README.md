@@ -57,8 +57,9 @@ Inherited from cc-same 0.1.12 (see [NOTICE.md](NOTICE.md)):
   Windows and Linux (`code login save | list | use | forget`, and *Claude Code sign-in* in
   Settings › Tools): sign in with `/login` in `claude`, save it, and switch between saved accounts.
   Not available on macOS, where the sign-in is in the Keychain.
-- Ten interface languages, light and dark themes, and update checks against this repository's
-  releases.
+- 27 interface languages (the first ten by hand, the rest machine-translated: see
+  [translations](docs/translations.md)), light and dark themes, and update checks against this
+  repository's releases.
 
 ## Roadmap
 

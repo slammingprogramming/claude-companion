@@ -423,7 +423,9 @@ fn language_picker(store: &Entity<Store>, preference: &str) -> AnyElement {
                 }
             };
             let chosen = |code: &str| preference == code;
+            // 27 languages are taller than half the window, so the list scrolls.
             let mut menu = menu
+                .scrollable(true)
                 .item(
                     PopupMenuItem::new(system())
                         .checked(!i18n::LANGUAGES.iter().any(|l| chosen(l.code)))

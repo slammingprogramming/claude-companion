@@ -64,9 +64,9 @@ Plus:
 - **Add a line to `CHANGELOG.md`** under `## Unreleased`, written for people who use the program,
   not for the code. Notes under `Unreleased` are left out of every build (the app carries only
   released sections) until the maintainer gives them a version number at release time.
-- **Text the app shows goes in `crates/app/locales/app.yml`** in all ten languages (English,
-  Simplified and Traditional Chinese, Japanese, Korean, French, German, Spanish, Brazilian
-  Portuguese, Russian). Machine translations are fine as a start if you say so in the pull request.
+- **Text the app shows goes in `crates/app/locales/app.yml`** in every language (27, listed in
+  [`docs/translations.md`](docs/translations.md)). Machine translations are fine as a start if you
+  say so in the pull request; native-speaker corrections are welcome and need no code.
 - **Keep it small.** One change per pull request is easier to review and to take or leave.
 - **Commits** need a clear message saying what and why. Signed commits are appreciated but not
   required from contributors.

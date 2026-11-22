@@ -9,7 +9,7 @@
 - [ ] `cargo test` and `cargo app-test`
 - [ ] I added or changed a test for this
 - [ ] The command line and the app match, or the README says why not
-- [ ] New app text is in all ten languages in `crates/app/locales/app.yml`
+- [ ] New app text is in every language in `crates/app/locales/app.yml`
 - [ ] I added a line to `CHANGELOG.md` under `## Unreleased`
 - [ ] I did not test on my real Claude setup, and nothing personal is in the code, tests or logs
 - [ ] Nothing reads inside a sign-in (see CONTRIBUTING.md)
